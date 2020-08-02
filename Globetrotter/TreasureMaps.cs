@@ -17,22 +17,19 @@ namespace Globetrotter {
                     return _mapToRow;
                 }
 
-                Item[] unopenedMaps = this.pi.Data.GetExcelSheet<Item>()
-                    .Where(item => item.FilterGroup == 18) // this is the filter group for maps
-                    .Where(item => item.RowId != 24_794) // exclude the seemingly special maps
-                    .ToArray();
-                EventItem[] openedMaps = this.pi.Data.GetExcelSheet<EventItem>()
-                    .Where(item => item.Unknown13 == 2) // apparently only opened maps have this field
-                    .Where(item => item.Unknown5 == 1) // this removes some weird maps and dupes
-                    .Where(item => item.RowId != 2_002_503 && item.RowId != 2_002_504) // exclude the seemingly special maps
-                    .ToArray();
-
                 Dictionary<uint, uint> mapToRow = new Dictionary<uint, uint>();
-                for (int i = 0; i < unopenedMaps.Length; i++) {
-                    Item unopened = unopenedMaps[i];
-                    EventItem opened = openedMaps[i];
 
-                    // associate the eventitem's id with the additional data of the unopened map, which is the row for the treasure spot table
+                foreach (TreasureHuntRank rank in this.pi.Data.GetExcelSheet<TreasureHuntRank>()) {
+                    Item unopened = rank.ItemName.Value;
+                    if (unopened == null) {
+                        continue;
+                    }
+
+                    EventItem opened = rank.KeyItemName.Value;
+                    if (opened == null) {
+                        continue;
+                    }
+
                     mapToRow[opened.RowId] = unopened.AdditionalData;
                 }
 
