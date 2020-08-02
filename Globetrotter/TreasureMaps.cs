@@ -7,27 +7,40 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Globetrotter {
     class TreasureMaps {
-        private static readonly Dictionary<uint, uint> MAP_TO_ROW = new Dictionary<uint, uint> {
-            [2_001_087] = 1,
-            [2_001_088] = 2,
-            [2_001_089] = 3,
-            [2_001_090] = 4,
-            [2_001_091] = 5,
-            // missing 6, 7, 8
-            [2_001_762] = 9,
-            [2_001_763] = 10,
-            [2_001_764] = 11,
-            [2_002_209] = 12,
-            [2_002_210] = 13,
-            // missing 14, 15, 16
-            [2_002_663] = 17,
-            [2_002_664] = 18,
-        };
+        private static Dictionary<uint, uint> _mapToRow;
+        private Dictionary<uint, uint> MapToRow {
+            get {
+                if (_mapToRow != null) {
+                    return _mapToRow;
+                }
+
+                Item[] unopenedMaps = this.pi.Data.GetExcelSheet<Item>()
+                    .Where(item => item.FilterGroup == 18) // this is the filter group for maps
+                    .Where(item => item.RowId != 24_794) // exclude the seemingly special maps
+                    .ToArray();
+                EventItem[] openedMaps = this.pi.Data.GetExcelSheet<EventItem>()
+                    .Where(item => item.Unknown13 == 2) // apparently only opened maps have this field
+                    .Where(item => item.Unknown5 == 1) // this removes some weird maps and dupes
+                    .Where(item => item.RowId != 2_002_503 && item.RowId != 2_002_504) // exclude the seemingly special maps
+                    .ToArray();
+
+                Dictionary<uint, uint> mapToRow = new Dictionary<uint, uint>();
+                for (int i = 0; i < unopenedMaps.Length; i++) {
+                    Item unopened = unopenedMaps[i];
+                    EventItem opened = openedMaps[i];
+
+                    // associate the eventitem's id with the additional data of the unopened map, which is the row for the treasure spot table
+                    mapToRow[opened.RowId] = unopened.AdditionalData;
+                }
+
+                _mapToRow = mapToRow;
+
+                return _mapToRow;
+            }
+        }
 
         private readonly DalamudPluginInterface pi;
         private readonly Configuration config;
@@ -71,7 +84,7 @@ namespace Globetrotter {
                 return;
             }
 
-            if (!MAP_TO_ROW.TryGetValue(packet.EventItemId, out uint rowId)) {
+            if (!this.MapToRow.TryGetValue(packet.EventItemId, out uint rowId)) {
                 return;
             }
 
