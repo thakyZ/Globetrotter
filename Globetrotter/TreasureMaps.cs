@@ -4,8 +4,6 @@ using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 
 namespace Globetrotter {
@@ -105,19 +103,15 @@ namespace Globetrotter {
             }
             TerritoryType terr = map.TerritoryType.Value;
 
-            // TODO: can probably fix this up to be nicer after Dalamud releases a new version and fixes the big with MapLinkPayload
-
             float x = ToMapCoordinate(loc.X, map.SizeFactor);
             float y = ToMapCoordinate(loc.Z, map.SizeFactor);
             MapLinkPayload mapLink = new MapLinkPayload(
+                this.pi.Data,
                 terr.RowId,
                 map.RowId,
                 ConvertMapCoordinateToRawPosition(x, map.SizeFactor),
                 ConvertMapCoordinateToRawPosition(y, map.SizeFactor)
             );
-
-            // fix bug in Dalamud
-            mapLink.GetType().GetField("DataResolver", BindingFlags.NonPublic | BindingFlags.Instance).SetValue(mapLink, this.pi.Data);
 
             this.pi.Framework.Gui.OpenMapWithMapLink(mapLink);
         }
