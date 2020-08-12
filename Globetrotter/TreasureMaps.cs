@@ -8,6 +8,9 @@ using System.Runtime.InteropServices;
 
 namespace Globetrotter {
     class TreasureMaps {
+        private const ushort ACTOR_CONTROL = 0x212; // updated 5.3
+        private const uint TREASURE_MAPS = 0x54;
+
         private static Dictionary<uint, uint> _mapToRow;
         private Dictionary<uint, uint> MapToRow {
             get {
@@ -117,12 +120,12 @@ namespace Globetrotter {
         }
 
         public static TreasureMapPacket ParsePacket(IntPtr dataPtr, ushort opCode) {
-            if (opCode != 0x165) {
+            if (opCode != ACTOR_CONTROL) {
                 return null;
             }
 
             uint category = (uint)Marshal.ReadByte(dataPtr);
-            if (category != 0x54) {
+            if (category != TREASURE_MAPS) {
                 return null;
             }
 
