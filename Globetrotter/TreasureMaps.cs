@@ -8,7 +8,7 @@ using System.Runtime.InteropServices;
 
 namespace Globetrotter {
     class TreasureMaps {
-        private const ushort ACTOR_CONTROL = 0x212; // updated 5.3
+        private const ushort ACTOR_CONTROL = 0x2b3; // updated 5.3 (hotfix 1)
         private const uint TREASURE_MAPS = 0x54;
 
         private static Dictionary<uint, uint> _mapToRow;
