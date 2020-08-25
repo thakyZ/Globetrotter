@@ -146,7 +146,7 @@ namespace Globetrotter {
         private static int ConvertMapCoordinateToRawPosition(float pos, float scale) {
             var c = scale / 100.0f;
 
-            var scaledPos = ((((pos - 1.0f) * c / 41.0f) * 2048.0f) - 1024.0f) / c;
+            var scaledPos = (((pos - 1.0f) * c / 41.0f * 2048.0f) - 1024.0f) / c;
             scaledPos *= 1000.0f;
 
             return (int)scaledPos;
@@ -155,7 +155,7 @@ namespace Globetrotter {
             var c = scale / 100f;
 
             val *= c;
-            return ((41f / c) * ((val + 1024f) / 2048f)) + 1;
+            return (41f / c * ((val + 1024f) / 2048f)) + 1;
         }
     }
 
