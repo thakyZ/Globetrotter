@@ -1,5 +1,6 @@
 ﻿using Dalamud.Game.Chat.SeStringHandling.Payloads;
 using Dalamud.Game.Internal.Network;
+using Dalamud.Hooking;
 using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
 using System;
@@ -7,8 +8,7 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace Globetrotter {
-    class TreasureMaps {
-        private const ushort ACTOR_CONTROL = 0x2b3; // updated 5.3 (hotfix 1)
+    class TreasureMaps : IDisposable {
         private const uint TREASURE_MAPS = 0x54;
 
         private static Dictionary<uint, uint> _mapToRow;
@@ -43,10 +43,23 @@ namespace Globetrotter {
         private readonly DalamudPluginInterface pi;
         private readonly Configuration config;
         private TreasureMapPacket lastMap;
+        private bool disposedValue;
+
+        private delegate char HandleActorControlSelfDelegate(long a1, long a2, IntPtr dataPtr);
+        private readonly Hook<HandleActorControlSelfDelegate> acsHook;
 
         public TreasureMaps(DalamudPluginInterface pi, Configuration config) {
             this.pi = pi ?? throw new ArgumentNullException(nameof(pi), "DalamudPluginInterface cannot be null");
             this.config = config ?? throw new ArgumentNullException(nameof(config), "Configuration cannot be null");
+
+            IntPtr delegatePtr = this.pi.TargetModuleScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
+            if (delegatePtr == IntPtr.Zero) {
+                PluginLog.Log("Unable to detect treasure maps because could not find ACS handler delegate");
+                return;
+            }
+
+            this.acsHook = new Hook<HandleActorControlSelfDelegate>(delegatePtr, new HandleActorControlSelfDelegate(this.OnACS));
+            this.acsHook.Enable();
         }
 
         public void OnHover(object sender, ulong id) {
@@ -57,14 +70,10 @@ namespace Globetrotter {
             this.OpenMapLocation();
         }
 
-        public void OnNetwork(IntPtr dataPtr, ushort opCode, uint sourceActorId, uint targetActorId, NetworkMessageDirection direction) {
-            if (direction != NetworkMessageDirection.ZoneDown) {
-                return;
-            }
-
-            TreasureMapPacket packet = ParsePacket(dataPtr, opCode);
+        private char OnACS(long a1, long a2, IntPtr dataPtr) {
+            TreasureMapPacket packet = ParsePacket(dataPtr);
             if (packet == null) {
-                return;
+                return this.acsHook.Original(a1, a2, dataPtr);
             }
 
             this.lastMap = packet;
@@ -73,6 +82,8 @@ namespace Globetrotter {
                 // this does not work because the offset in memory is not yet updated with the thing
                 this.OpenMapLocation();
             }
+
+            return this.acsHook.Original(a1, a2, dataPtr);
         }
 
         public void OpenMapLocation() {
@@ -119,11 +130,7 @@ namespace Globetrotter {
             this.pi.Framework.Gui.OpenMapWithMapLink(mapLink);
         }
 
-        public static TreasureMapPacket ParsePacket(IntPtr dataPtr, ushort opCode) {
-            if (opCode != ACTOR_CONTROL) {
-                return null;
-            }
-
+        public static TreasureMapPacket ParsePacket(IntPtr dataPtr) {
             uint category = (uint)Marshal.ReadByte(dataPtr);
             if (category != TREASURE_MAPS) {
                 return null;
@@ -156,6 +163,22 @@ namespace Globetrotter {
 
             val *= c;
             return (41f / c * ((val + 1024f) / 2048f)) + 1;
+        }
+
+        protected virtual void Dispose(bool disposing) {
+            if (!disposedValue) {
+                if (disposing) {
+                    this.acsHook?.Dispose();
+                }
+
+                disposedValue = true;
+            }
+        }
+
+        public void Dispose() {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 

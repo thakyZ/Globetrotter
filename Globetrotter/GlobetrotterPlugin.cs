@@ -25,7 +25,6 @@ namespace Globetrotter {
             this.pi.UiBuilder.OnBuildUi += this.ui.Draw;
             this.pi.UiBuilder.OnOpenConfigUi += this.ui.OpenSettings;
             this.pi.Framework.Gui.HoveredItemChanged += this.maps.OnHover;
-            this.pi.Framework.Network.OnNetworkMessage += this.maps.OnNetwork;
             this.pi.CommandManager.AddHandler("/pglobetrotter", new CommandInfo(this.OnConfigCommand) {
                 HelpMessage = "Show the Globetrotter config"
             });
@@ -48,7 +47,7 @@ namespace Globetrotter {
                     this.pi.UiBuilder.OnBuildUi -= this.ui.Draw;
                     this.pi.UiBuilder.OnOpenConfigUi -= this.ui.OpenSettings;
                     this.pi.Framework.Gui.HoveredItemChanged -= this.maps.OnHover;
-                    this.pi.Framework.Network.OnNetworkMessage -= this.maps.OnNetwork;
+                    this.maps.Dispose();
                     this.pi.CommandManager.RemoveHandler("/pglobetrotter");
                     this.pi.CommandManager.RemoveHandler("/tmap");
                 }
