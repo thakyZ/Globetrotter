@@ -1,5 +1,4 @@
 ﻿using Dalamud.Game.Chat.SeStringHandling.Payloads;
-using Dalamud.Game.Internal.Network;
 using Dalamud.Hooking;
 using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
@@ -26,7 +25,13 @@ namespace Globetrotter {
                         continue;
                     }
 
-                    EventItem opened = rank.KeyItemName.Value;
+                    EventItem opened;
+                    // FIXME: remove this try/catch when lumina is fixed
+                    try {
+                        opened = rank.KeyItemName.Value;
+                    } catch (NullReferenceException) {
+                        opened = null;
+                    }
                     if (opened == null) {
                         continue;
                     }
@@ -131,7 +136,7 @@ namespace Globetrotter {
         }
 
         public static TreasureMapPacket ParsePacket(IntPtr dataPtr) {
-            uint category = (uint)Marshal.ReadByte(dataPtr);
+            uint category = Marshal.ReadByte(dataPtr);
             if (category != TREASURE_MAPS) {
                 return null;
             }
