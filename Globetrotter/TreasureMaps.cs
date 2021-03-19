@@ -7,20 +7,21 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 
 namespace Globetrotter {
-    class TreasureMaps : IDisposable {
-        private const uint TREASURE_MAPS = 0x54;
+    internal sealed class TreasureMaps : IDisposable {
+        private const uint TreasureMapsCode = 0x54;
 
         private static Dictionary<uint, uint> _mapToRow;
+
         private Dictionary<uint, uint> MapToRow {
             get {
                 if (_mapToRow != null) {
                     return _mapToRow;
                 }
 
-                Dictionary<uint, uint> mapToRow = new Dictionary<uint, uint>();
+                var mapToRow = new Dictionary<uint, uint>();
 
-                foreach (TreasureHuntRank rank in this.pi.Data.GetExcelSheet<TreasureHuntRank>()) {
-                    Item unopened = rank.ItemName.Value;
+                foreach (var rank in this.Interface.Data.GetExcelSheet<TreasureHuntRank>()) {
+                    var unopened = rank.ItemName.Value;
                     if (unopened == null) {
                         continue;
                     }
@@ -32,6 +33,7 @@ namespace Globetrotter {
                     } catch (NullReferenceException) {
                         opened = null;
                     }
+
                     if (opened == null) {
                         continue;
                     }
@@ -45,30 +47,30 @@ namespace Globetrotter {
             }
         }
 
-        private readonly DalamudPluginInterface pi;
-        private readonly Configuration config;
-        private TreasureMapPacket lastMap;
-        private bool disposedValue;
+        private DalamudPluginInterface Interface { get; }
+        private Configuration Config { get; }
+        private TreasureMapPacket _lastMap;
 
         private delegate char HandleActorControlSelfDelegate(long a1, long a2, IntPtr dataPtr);
-        private readonly Hook<HandleActorControlSelfDelegate> acsHook;
+
+        private readonly Hook<HandleActorControlSelfDelegate> _acsHook;
 
         public TreasureMaps(DalamudPluginInterface pi, Configuration config) {
-            this.pi = pi ?? throw new ArgumentNullException(nameof(pi), "DalamudPluginInterface cannot be null");
-            this.config = config ?? throw new ArgumentNullException(nameof(config), "Configuration cannot be null");
+            this.Interface = pi ?? throw new ArgumentNullException(nameof(pi), "DalamudPluginInterface cannot be null");
+            this.Config = config ?? throw new ArgumentNullException(nameof(config), "Configuration cannot be null");
 
-            IntPtr delegatePtr = this.pi.TargetModuleScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
+            var delegatePtr = this.Interface.TargetModuleScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
             if (delegatePtr == IntPtr.Zero) {
                 PluginLog.Log("Unable to detect treasure maps because could not find ACS handler delegate");
                 return;
             }
 
-            this.acsHook = new Hook<HandleActorControlSelfDelegate>(delegatePtr, new HandleActorControlSelfDelegate(this.OnACS));
-            this.acsHook.Enable();
+            this._acsHook = new Hook<HandleActorControlSelfDelegate>(delegatePtr, new HandleActorControlSelfDelegate(this.OnACS));
+            this._acsHook.Enable();
         }
 
         public void OnHover(object sender, ulong id) {
-            if (!this.config.ShowOnHover || this.lastMap == null || this.lastMap.EventItemId != id) {
+            if (!this.Config.ShowOnHover || this._lastMap == null || this._lastMap.EventItemId != id) {
                 return;
             }
 
@@ -76,81 +78,71 @@ namespace Globetrotter {
         }
 
         private char OnACS(long a1, long a2, IntPtr dataPtr) {
-            TreasureMapPacket packet = ParsePacket(dataPtr);
+            var packet = ParsePacket(dataPtr);
             if (packet == null) {
-                return this.acsHook.Original(a1, a2, dataPtr);
+                return this._acsHook.Original(a1, a2, dataPtr);
             }
 
-            this.lastMap = packet;
+            this._lastMap = packet;
 
-            if (this.config.ShowOnOpen && packet.JustOpened) {
+            if (this.Config.ShowOnOpen && packet.JustOpened) {
                 // this does not work because the offset in memory is not yet updated with the thing
                 this.OpenMapLocation();
             }
 
-            return this.acsHook.Original(a1, a2, dataPtr);
+            return this._acsHook.Original(a1, a2, dataPtr);
         }
 
         public void OpenMapLocation() {
-            TreasureMapPacket packet = this.lastMap;
+            var packet = this._lastMap;
 
             if (packet == null) {
                 return;
             }
 
-            if (!this.MapToRow.TryGetValue(packet.EventItemId, out uint rowId)) {
+            if (!this.MapToRow.TryGetValue(packet.EventItemId, out var rowId)) {
                 return;
             }
 
-            TreasureSpot spot = this.pi.Data.GetExcelSheet<TreasureSpot>().GetRow(rowId, packet.SubRowId);
-            if (spot == null) {
+            var spot = this.Interface.Data.GetExcelSheet<TreasureSpot>().GetRow(rowId, packet.SubRowId);
+
+            var loc = spot?.Location?.Value;
+            var map = loc?.Map?.Value;
+            var terr = map?.TerritoryType?.Value;
+
+            if (terr == null) {
                 return;
             }
 
-            if (spot.Location.Value == null) {
-                return;
-            }
-            Level loc = spot.Location.Value;
-
-            if (loc.Map.Value == null) {
-                return;
-            }
-            Map map = loc.Map.Value;
-
-            if (map.TerritoryType.Value == null) {
-                return;
-            }
-            TerritoryType terr = map.TerritoryType.Value;
-
-            float x = ToMapCoordinate(loc.X, map.SizeFactor);
-            float y = ToMapCoordinate(loc.Z, map.SizeFactor);
-            MapLinkPayload mapLink = new MapLinkPayload(
-                this.pi.Data,
+            var x = ToMapCoordinate(loc.X, map.SizeFactor);
+            var y = ToMapCoordinate(loc.Z, map.SizeFactor);
+            var mapLink = new MapLinkPayload(
+                this.Interface.Data,
                 terr.RowId,
                 map.RowId,
                 ConvertMapCoordinateToRawPosition(x, map.SizeFactor),
                 ConvertMapCoordinateToRawPosition(y, map.SizeFactor)
             );
 
-            this.pi.Framework.Gui.OpenMapWithMapLink(mapLink);
+            this.Interface.Framework.Gui.OpenMapWithMapLink(mapLink);
         }
 
-        public static TreasureMapPacket ParsePacket(IntPtr dataPtr) {
+        private static TreasureMapPacket ParsePacket(IntPtr dataPtr) {
             uint category = Marshal.ReadByte(dataPtr);
-            if (category != TREASURE_MAPS) {
+            if (category != TreasureMapsCode) {
                 return null;
             }
 
             dataPtr += 4; // skip padding
-            uint param1 = (uint)Marshal.ReadInt32(dataPtr);
+            var param1 = (uint) Marshal.ReadInt32(dataPtr);
             dataPtr += 4;
-            uint param2 = (uint)Marshal.ReadInt32(dataPtr);
+            var param2 = (uint) Marshal.ReadInt32(dataPtr);
             dataPtr += 4;
-            uint param3 = (uint)Marshal.ReadInt32(dataPtr);
+            var param3 = (uint) Marshal.ReadInt32(dataPtr);
 
-            uint eventItemId = param1;
-            uint subRowId = param2;
-            bool justOpened = param3 == 1;
+            var eventItemId = param1;
+            var subRowId = param2;
+            var justOpened = param3 == 1;
 
             return new TreasureMapPacket(eventItemId, subRowId, justOpened);
         }
@@ -161,8 +153,9 @@ namespace Globetrotter {
             var scaledPos = (((pos - 1.0f) * c / 41.0f * 2048.0f) - 1024.0f) / c;
             scaledPos *= 1000.0f;
 
-            return (int)scaledPos;
+            return (int) scaledPos;
         }
+
         private static float ToMapCoordinate(float val, float scale) {
             var c = scale / 100f;
 
@@ -170,27 +163,15 @@ namespace Globetrotter {
             return (41f / c * ((val + 1024f) / 2048f)) + 1;
         }
 
-        protected virtual void Dispose(bool disposing) {
-            if (!disposedValue) {
-                if (disposing) {
-                    this.acsHook?.Dispose();
-                }
-
-                disposedValue = true;
-            }
-        }
-
         public void Dispose() {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            this._acsHook?.Dispose();
         }
     }
 
-    class TreasureMapPacket {
-        public uint EventItemId { get; private set; }
-        public uint SubRowId { get; private set; }
-        public bool JustOpened { get; private set; }
+    internal class TreasureMapPacket {
+        public uint EventItemId { get; }
+        public uint SubRowId { get; }
+        public bool JustOpened { get; }
 
         public TreasureMapPacket(uint eventItemId, uint subRowId, bool justOpened) {
             this.EventItemId = eventItemId;

@@ -4,8 +4,8 @@ using System;
 
 namespace Globetrotter {
     [Serializable]
-    class Configuration : IPluginConfiguration {
-        private DalamudPluginInterface pi;
+    internal class Configuration : IPluginConfiguration {
+        private DalamudPluginInterface _pi;
 
         public int Version { get; set; } = 1;
 
@@ -13,11 +13,11 @@ namespace Globetrotter {
         public bool ShowOnOpen { get; set; } = true;
 
         public void Initialize(DalamudPluginInterface pi) {
-            this.pi = pi ?? throw new ArgumentNullException(nameof(pi), "DalamudPluginInterface cannot be null");
+            this._pi = pi ?? throw new ArgumentNullException(nameof(pi), "DalamudPluginInterface cannot be null");
         }
 
         public void Save() {
-            this.pi.SavePluginConfig(this);
+            this._pi.SavePluginConfig(this);
         }
     }
 }
