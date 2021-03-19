@@ -5,7 +5,7 @@
                 ProjectDir="$(ProjectDir)"
                 OutputPath="$(OutputPath)"
                 AssemblyName="$(AssemblyName)"
-                VersionCompenents="3"
+                VersionComponents="3"
                 MakeZip="true"/>
     </Target>
 </Project>

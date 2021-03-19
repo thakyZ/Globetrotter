@@ -4,70 +4,63 @@ using System;
 
 namespace Globetrotter {
     public class GlobetrotterPlugin : IDalamudPlugin {
-        private bool disposedValue;
+        private bool _disposedValue;
 
         public string Name => "Globetrotter";
 
-        private DalamudPluginInterface pi;
-        private Configuration config;
-        private PluginUI ui;
-        private TreasureMaps maps;
+        private DalamudPluginInterface _pi = null!;
+        private Configuration _config = null!;
+        private PluginUi _ui = null!;
+        private TreasureMaps _maps = null!;
 
         public void Initialize(DalamudPluginInterface pluginInterface) {
-            this.pi = pluginInterface ?? throw new ArgumentNullException(nameof(pluginInterface), "DalamudPluginInterface cannot be null");
-            
-            this.config = this.pi.GetPluginConfig() as Configuration ?? new Configuration();
-            this.config.Initialize(this.pi);
+            this._pi = pluginInterface ?? throw new ArgumentNullException(nameof(pluginInterface), "DalamudPluginInterface cannot be null");
 
-            this.ui = new PluginUI(this.pi, this.config);
-            this.maps = new TreasureMaps(this.pi, this.config);
+            this._config = this._pi.GetPluginConfig() as Configuration ?? new Configuration();
+            this._config.Initialize(this._pi);
 
-            this.pi.UiBuilder.OnBuildUi += this.ui.Draw;
-            this.pi.UiBuilder.OnOpenConfigUi += this.ui.OpenSettings;
-            this.pi.Framework.Gui.HoveredItemChanged += this.maps.OnHover;
-            this.pi.CommandManager.AddHandler("/pglobetrotter", new CommandInfo(this.OnConfigCommand) {
-                HelpMessage = "Show the Globetrotter config"
+            this._ui = new PluginUi(this._config);
+            this._maps = new TreasureMaps(this._pi, this._config);
+
+            this._pi.UiBuilder.OnBuildUi += this._ui.Draw;
+            this._pi.UiBuilder.OnOpenConfigUi += this._ui.OpenSettings;
+            this._pi.Framework.Gui.HoveredItemChanged += this._maps.OnHover;
+            this._pi.CommandManager.AddHandler("/pglobetrotter", new CommandInfo(this.OnConfigCommand) {
+                HelpMessage = "Show the Globetrotter config",
             });
-            this.pi.CommandManager.AddHandler("/tmap", new CommandInfo(this.OnCommand) {
-                HelpMessage = "Open the map and place a flag at the location of your current treasure map"
+            this._pi.CommandManager.AddHandler("/tmap", new CommandInfo(this.OnCommand) {
+                HelpMessage = "Open the map and place a flag at the location of your current treasure map",
             });
         }
 
         private void OnConfigCommand(string command, string args) {
-            this.ui.OpenSettings(null, null);
+            this._ui.OpenSettings(null, null);
         }
 
         private void OnCommand(string command, string args) {
-            this.maps.OpenMapLocation();
+            this._maps.OpenMapLocation();
         }
 
         protected virtual void Dispose(bool disposing) {
-            if (!disposedValue) {
-                if (disposing) {
-                    this.pi.UiBuilder.OnBuildUi -= this.ui.Draw;
-                    this.pi.UiBuilder.OnOpenConfigUi -= this.ui.OpenSettings;
-                    this.pi.Framework.Gui.HoveredItemChanged -= this.maps.OnHover;
-                    this.maps.Dispose();
-                    this.pi.CommandManager.RemoveHandler("/pglobetrotter");
-                    this.pi.CommandManager.RemoveHandler("/tmap");
-                }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override finalizer
-                // TODO: set large fields to null
-                disposedValue = true;
+            if (this._disposedValue) {
+                return;
             }
-        }
 
-        // // TODO: override finalizer only if 'Dispose(bool disposing)' has code to free unmanaged resources
-        // ~GlobetrotterPlugin()
-        // {
-        //     // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-        //     Dispose(disposing: false);
-        // }
+            if (disposing) {
+                this._pi.UiBuilder.OnBuildUi -= this._ui.Draw;
+                this._pi.UiBuilder.OnOpenConfigUi -= this._ui.OpenSettings;
+                this._pi.Framework.Gui.HoveredItemChanged -= this._maps.OnHover;
+                this._maps.Dispose();
+                this._pi.CommandManager.RemoveHandler("/pglobetrotter");
+                this._pi.CommandManager.RemoveHandler("/tmap");
+            }
+
+            this._disposedValue = true;
+        }
 
         public void Dispose() {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
+            this.Dispose(true);
             GC.SuppressFinalize(this);
         }
     }
