@@ -1,10 +1,10 @@
-﻿using Dalamud.Game.Chat.SeStringHandling.Payloads;
-using Dalamud.Hooking;
+﻿using Dalamud.Hooking;
 using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Dalamud.Game.Text.SeStringHandling.Payloads;
 
 namespace Globetrotter {
     internal sealed class TreasureMaps : IDisposable {
