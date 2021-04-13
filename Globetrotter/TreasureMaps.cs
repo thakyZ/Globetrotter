@@ -78,19 +78,26 @@ namespace Globetrotter {
         }
 
         private char OnACS(long a1, long a2, IntPtr dataPtr) {
+            try {
+                this.OnACSInner(dataPtr);
+            } catch (Exception ex) {
+                PluginLog.LogError(ex, "Exception on ACS");
+            }
+
+            return this._acsHook.Original(a1, a2, dataPtr);
+        }
+
+        private void OnACSInner(IntPtr dataPtr) {
             var packet = ParsePacket(dataPtr);
             if (packet == null) {
-                return this._acsHook.Original(a1, a2, dataPtr);
+                return;
             }
 
             this._lastMap = packet;
 
             if (this.Config.ShowOnOpen && packet.JustOpened) {
-                // this does not work because the offset in memory is not yet updated with the thing
                 this.OpenMapLocation();
             }
-
-            return this._acsHook.Original(a1, a2, dataPtr);
         }
 
         public void OpenMapLocation() {
