@@ -3,6 +3,7 @@ using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 
@@ -10,7 +11,7 @@ namespace Globetrotter {
     internal sealed class TreasureMaps : IDisposable {
         private const uint TreasureMapsCode = 0x54;
 
-        private static Dictionary<uint, uint> _mapToRow;
+        private static Dictionary<uint, uint>? _mapToRow;
 
         private Dictionary<uint, uint> MapToRow {
             get {
@@ -26,7 +27,7 @@ namespace Globetrotter {
                         continue;
                     }
 
-                    EventItem opened;
+                    EventItem? opened;
                     // FIXME: remove this try/catch when lumina is fixed
                     try {
                         opened = rank.KeyItemName.Value;
@@ -49,24 +50,31 @@ namespace Globetrotter {
 
         private DalamudPluginInterface Interface { get; }
         private Configuration Config { get; }
-        private TreasureMapPacket _lastMap;
+        private TreasureMapPacket? _lastMap;
 
         private delegate char HandleActorControlSelfDelegate(long a1, long a2, IntPtr dataPtr);
 
+        private delegate IntPtr ShowTreasureMapDelegate(IntPtr manager, ushort rowId, ushort subRowId, byte a4);
+
         private readonly Hook<HandleActorControlSelfDelegate> _acsHook;
+        private readonly Hook<ShowTreasureMapDelegate> _showMapHook;
 
         public TreasureMaps(DalamudPluginInterface pi, Configuration config) {
             this.Interface = pi ?? throw new ArgumentNullException(nameof(pi), "DalamudPluginInterface cannot be null");
             this.Config = config ?? throw new ArgumentNullException(nameof(config), "Configuration cannot be null");
 
-            var delegatePtr = this.Interface.TargetModuleScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
-            if (delegatePtr == IntPtr.Zero) {
-                PluginLog.Log("Unable to detect treasure maps because could not find ACS handler delegate");
-                return;
-            }
-
-            this._acsHook = new Hook<HandleActorControlSelfDelegate>(delegatePtr, new HandleActorControlSelfDelegate(this.OnACS));
+            var acsPtr = this.Interface.TargetModuleScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
+            this._acsHook = new Hook<HandleActorControlSelfDelegate>(acsPtr, new HandleActorControlSelfDelegate(this.OnACS));
             this._acsHook.Enable();
+
+            var showMapPtr = this.Interface.TargetModuleScanner.ScanText("E8 ?? ?? ?? ?? 40 84 FF 0F 85 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ??");
+            this._showMapHook = new Hook<ShowTreasureMapDelegate>(showMapPtr, new ShowTreasureMapDelegate(this.OnShowMap));
+            this._showMapHook.Enable();
+        }
+
+        public void Dispose() {
+            this._acsHook.Dispose();
+            this._showMapHook.Dispose();
         }
 
         public void OnHover(object sender, ulong id) {
@@ -75,6 +83,36 @@ namespace Globetrotter {
             }
 
             this.OpenMapLocation();
+        }
+
+        private IntPtr OnShowMap(IntPtr manager, ushort rowId, ushort subRowId, byte a4) {
+            try {
+                if (!this.OnShowMapInner(rowId, subRowId)) {
+                    return IntPtr.Zero;
+                }
+            } catch (Exception ex) {
+                PluginLog.LogError(ex, "Exception on show map");
+            }
+
+            return this._showMapHook.Original(manager, rowId, subRowId, a4);
+        }
+
+        private bool OnShowMapInner(ushort rowId, ushort subRowId) {
+            if (this._lastMap == null) {
+                try {
+                    var eventItemId = this.MapToRow.First(entry => entry.Value == rowId);
+                    this._lastMap = new TreasureMapPacket(eventItemId.Key, subRowId, false);
+                } catch (InvalidOperationException) {
+                    // no-op
+                }
+            }
+
+            if (!this.Config.ShowOnOpen && (!this.Config.ShowOnDecipher || this._lastMap?.JustOpened != true)) {
+                return true;
+            }
+
+            this.OpenMapLocation();
+            return false;
         }
 
         private char OnACS(long a1, long a2, IntPtr dataPtr) {
@@ -94,10 +132,6 @@ namespace Globetrotter {
             }
 
             this._lastMap = packet;
-
-            if (this.Config.ShowOnOpen && packet.JustOpened) {
-                this.OpenMapLocation();
-            }
         }
 
         public void OpenMapLocation() {
@@ -132,9 +166,13 @@ namespace Globetrotter {
             );
 
             this.Interface.Framework.Gui.OpenMapWithMapLink(mapLink);
+
+            if (this._lastMap != null) {
+                this._lastMap.JustOpened = false;
+            }
         }
 
-        private static TreasureMapPacket ParsePacket(IntPtr dataPtr) {
+        private static TreasureMapPacket? ParsePacket(IntPtr dataPtr) {
             uint category = Marshal.ReadByte(dataPtr);
             if (category != TreasureMapsCode) {
                 return null;
@@ -169,16 +207,12 @@ namespace Globetrotter {
             val *= c;
             return (41f / c * ((val + 1024f) / 2048f)) + 1;
         }
-
-        public void Dispose() {
-            this._acsHook?.Dispose();
-        }
     }
 
     internal class TreasureMapPacket {
         public uint EventItemId { get; }
         public uint SubRowId { get; }
-        public bool JustOpened { get; }
+        public bool JustOpened { get; set; }
 
         public TreasureMapPacket(uint eventItemId, uint subRowId, bool justOpened) {
             this.EventItemId = eventItemId;
