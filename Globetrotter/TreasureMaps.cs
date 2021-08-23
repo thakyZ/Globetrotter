@@ -1,11 +1,11 @@
 ﻿using Dalamud.Hooking;
-using Dalamud.Plugin;
 using Lumina.Excel.GeneratedSheets;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
+using Dalamud.Logging;
 
 namespace Globetrotter {
     internal sealed class TreasureMaps : IDisposable {
@@ -21,7 +21,7 @@ namespace Globetrotter {
 
                 var mapToRow = new Dictionary<uint, uint>();
 
-                foreach (var rank in this.Interface.Data.GetExcelSheet<TreasureHuntRank>()) {
+                foreach (var rank in this.Plugin.DataManager.GetExcelSheet<TreasureHuntRank>()) {
                     var unopened = rank.ItemName.Value;
                     if (unopened == null) {
                         continue;
@@ -48,8 +48,7 @@ namespace Globetrotter {
             }
         }
 
-        private DalamudPluginInterface Interface { get; }
-        private Configuration Config { get; }
+        private GlobetrotterPlugin Plugin { get; }
         private TreasureMapPacket? _lastMap;
 
         private delegate char HandleActorControlSelfDelegate(long a1, long a2, IntPtr dataPtr);
@@ -59,16 +58,15 @@ namespace Globetrotter {
         private readonly Hook<HandleActorControlSelfDelegate> _acsHook;
         private readonly Hook<ShowTreasureMapDelegate> _showMapHook;
 
-        public TreasureMaps(DalamudPluginInterface pi, Configuration config) {
-            this.Interface = pi ?? throw new ArgumentNullException(nameof(pi), "DalamudPluginInterface cannot be null");
-            this.Config = config ?? throw new ArgumentNullException(nameof(config), "Configuration cannot be null");
+        public TreasureMaps(GlobetrotterPlugin plugin) {
+            this.Plugin = plugin;
 
-            var acsPtr = this.Interface.TargetModuleScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
-            this._acsHook = new Hook<HandleActorControlSelfDelegate>(acsPtr, new HandleActorControlSelfDelegate(this.OnACS));
+            var acsPtr = this.Plugin.SigScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
+            this._acsHook = new Hook<HandleActorControlSelfDelegate>(acsPtr, this.OnACS);
             this._acsHook.Enable();
 
-            var showMapPtr = this.Interface.TargetModuleScanner.ScanText("E8 ?? ?? ?? ?? 40 84 FF 0F 85 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ??");
-            this._showMapHook = new Hook<ShowTreasureMapDelegate>(showMapPtr, new ShowTreasureMapDelegate(this.OnShowMap));
+            var showMapPtr = this.Plugin.SigScanner.ScanText("E8 ?? ?? ?? ?? 40 84 FF 0F 85 ?? ?? ?? ?? 48 8B 0D ?? ?? ?? ??");
+            this._showMapHook = new Hook<ShowTreasureMapDelegate>(showMapPtr, this.OnShowMap);
             this._showMapHook.Enable();
         }
 
@@ -77,8 +75,8 @@ namespace Globetrotter {
             this._showMapHook.Dispose();
         }
 
-        public void OnHover(object sender, ulong id) {
-            if (!this.Config.ShowOnHover || this._lastMap == null || this._lastMap.EventItemId != id) {
+        public void OnHover(object? sender, ulong id) {
+            if (!this.Plugin.Config.ShowOnHover || this._lastMap == null || this._lastMap.EventItemId != id) {
                 return;
             }
 
@@ -107,7 +105,7 @@ namespace Globetrotter {
                 }
             }
 
-            if (!this.Config.ShowOnOpen && (!this.Config.ShowOnDecipher || this._lastMap?.JustOpened != true)) {
+            if (!this.Plugin.Config.ShowOnOpen && (!this.Plugin.Config.ShowOnDecipher || this._lastMap?.JustOpened != true)) {
                 return true;
             }
 
@@ -145,7 +143,7 @@ namespace Globetrotter {
                 return;
             }
 
-            var spot = this.Interface.Data.GetExcelSheet<TreasureSpot>().GetRow(rowId, packet.SubRowId);
+            var spot = this.Plugin.DataManager.GetExcelSheet<TreasureSpot>().GetRow(rowId, packet.SubRowId);
 
             var loc = spot?.Location?.Value;
             var map = loc?.Map?.Value;
@@ -155,17 +153,16 @@ namespace Globetrotter {
                 return;
             }
 
-            var x = ToMapCoordinate(loc.X, map.SizeFactor);
+            var x = ToMapCoordinate(loc!.X, map!.SizeFactor);
             var y = ToMapCoordinate(loc.Z, map.SizeFactor);
             var mapLink = new MapLinkPayload(
-                this.Interface.Data,
                 terr.RowId,
                 map.RowId,
                 ConvertMapCoordinateToRawPosition(x, map.SizeFactor),
                 ConvertMapCoordinateToRawPosition(y, map.SizeFactor)
             );
 
-            this.Interface.Framework.Gui.OpenMapWithMapLink(mapLink);
+            this.Plugin.GameGui.OpenMapWithMapLink(mapLink);
 
             if (this._lastMap != null) {
                 this._lastMap.JustOpened = false;

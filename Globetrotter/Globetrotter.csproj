@@ -2,9 +2,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
         <Version>1.2.0</Version>
-        <TargetFramework>net48</TargetFramework>
+        <TargetFramework>net5-windows</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
+        <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="Dalamud">
@@ -29,6 +30,6 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="1.2.1"/>
+        <PackageReference Include="DalamudPackager" Version="2.0.0"/>
     </ItemGroup>
 </Project>

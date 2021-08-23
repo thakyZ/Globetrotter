@@ -1,44 +1,63 @@
 ﻿using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using System;
+using Dalamud.Data;
+using Dalamud.Game;
+using Dalamud.Game.Gui;
 
 namespace Globetrotter {
+    // ReSharper disable once ClassNeverInstantiated.Global
     public class GlobetrotterPlugin : IDalamudPlugin {
         private bool _disposedValue;
 
         public string Name => "Globetrotter";
 
-        private DalamudPluginInterface _pi = null!;
-        private Configuration _config = null!;
-        private PluginUi _ui = null!;
-        private TreasureMaps _maps = null!;
+        private DalamudPluginInterface Interface { get; }
+        private CommandManager CommandManager { get; }
+        internal DataManager DataManager { get; }
+        internal GameGui GameGui { get; }
+        internal SigScanner SigScanner { get; }
 
-        public void Initialize(DalamudPluginInterface pluginInterface) {
-            this._pi = pluginInterface ?? throw new ArgumentNullException(nameof(pluginInterface), "DalamudPluginInterface cannot be null");
+        internal Configuration Config { get; }
+        private PluginUi Ui { get; }
+        private TreasureMaps Maps { get; }
 
-            this._config = this._pi.GetPluginConfig() as Configuration ?? new Configuration();
-            this._config.Initialize(this._pi);
+        public GlobetrotterPlugin(
+            DalamudPluginInterface pluginInterface,
+            CommandManager commandManager,
+            DataManager dataManager,
+            GameGui gameGui,
+            SigScanner scanner
+        ) {
+            this.Interface = pluginInterface;
+            this.CommandManager = commandManager;
+            this.DataManager = dataManager;
+            this.GameGui = gameGui;
+            this.SigScanner = scanner;
 
-            this._ui = new PluginUi(this._config);
-            this._maps = new TreasureMaps(this._pi, this._config);
+            this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
+            this.Config.Initialize(this.Interface);
 
-            this._pi.UiBuilder.OnBuildUi += this._ui.Draw;
-            this._pi.UiBuilder.OnOpenConfigUi += this._ui.OpenSettings;
-            this._pi.Framework.Gui.HoveredItemChanged += this._maps.OnHover;
-            this._pi.CommandManager.AddHandler("/pglobetrotter", new CommandInfo(this.OnConfigCommand) {
+            this.Ui = new PluginUi(this);
+            this.Maps = new TreasureMaps(this);
+
+            this.Interface.UiBuilder.Draw += this.Ui.Draw;
+            this.Interface.UiBuilder.OpenConfigUi += this.Ui.OpenSettings;
+            this.GameGui.HoveredItemChanged += this.Maps.OnHover;
+            this.CommandManager.AddHandler("/pglobetrotter", new CommandInfo(this.OnConfigCommand) {
                 HelpMessage = "Show the Globetrotter config",
             });
-            this._pi.CommandManager.AddHandler("/tmap", new CommandInfo(this.OnCommand) {
+            this.CommandManager.AddHandler("/tmap", new CommandInfo(this.OnCommand) {
                 HelpMessage = "Open the map and place a flag at the location of your current treasure map",
             });
         }
 
         private void OnConfigCommand(string command, string args) {
-            this._ui.OpenSettings(null, null);
+            this.Ui.OpenSettings(null, null);
         }
 
         private void OnCommand(string command, string args) {
-            this._maps.OpenMapLocation();
+            this.Maps.OpenMapLocation();
         }
 
         protected virtual void Dispose(bool disposing) {
@@ -47,12 +66,12 @@ namespace Globetrotter {
             }
 
             if (disposing) {
-                this._pi.UiBuilder.OnBuildUi -= this._ui.Draw;
-                this._pi.UiBuilder.OnOpenConfigUi -= this._ui.OpenSettings;
-                this._pi.Framework.Gui.HoveredItemChanged -= this._maps.OnHover;
-                this._maps.Dispose();
-                this._pi.CommandManager.RemoveHandler("/pglobetrotter");
-                this._pi.CommandManager.RemoveHandler("/tmap");
+                this.Interface.UiBuilder.Draw -= this.Ui.Draw;
+                this.Interface.UiBuilder.OpenConfigUi -= this.Ui.OpenSettings;
+                this.GameGui.HoveredItemChanged -= this.Maps.OnHover;
+                this.Maps.Dispose();
+                this.CommandManager.RemoveHandler("/pglobetrotter");
+                this.CommandManager.RemoveHandler("/tmap");
             }
 
             this._disposedValue = true;
