@@ -30,6 +30,12 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.0.0"/>
+        <PackageReference Include="DalamudPackager" Version="2.1.0"/>
+    </ItemGroup>
+    <ItemGroup>
+        <Content Include="..\icon.png">
+            <Link>icon.png</Link>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 </Project>
