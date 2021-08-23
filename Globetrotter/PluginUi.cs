@@ -4,7 +4,7 @@ using System.Numerics;
 
 namespace Globetrotter {
     internal class PluginUi {
-        private Configuration Config { get; }
+        private GlobetrotterPlugin Plugin { get; }
 
         private bool _displaySettings;
 
@@ -13,11 +13,11 @@ namespace Globetrotter {
             set => this._displaySettings = value;
         }
 
-        public PluginUi(Configuration config) {
-            this.Config = config ?? throw new ArgumentNullException(nameof(config), "Configuration cannot be null");
+        public PluginUi(GlobetrotterPlugin plugin) {
+            this.Plugin = plugin;
         }
 
-        public void OpenSettings(object sender, EventArgs e) {
+        public void OpenSettings(object? sender, EventArgs? e) {
             this.DisplaySettings = true;
         }
 
@@ -37,26 +37,26 @@ namespace Globetrotter {
 
             ImGui.Separator();
 
-            var showOnDecipher = this.Config.ShowOnDecipher;
+            var showOnDecipher = this.Plugin.Config.ShowOnDecipher;
             if (HelpCheckbox("Show on decipher", "Open the map with a flag set after deciphering a map.", ref showOnDecipher)) {
-                this.Config.ShowOnDecipher = showOnDecipher;
-                this.Config.Save();
+                this.Plugin.Config.ShowOnDecipher = showOnDecipher;
+                this.Plugin.Config.Save();
             }
 
             ImGui.Separator();
 
-            var showOnOpen = this.Config.ShowOnOpen;
+            var showOnOpen = this.Plugin.Config.ShowOnOpen;
             if (HelpCheckbox("Show on open", "Open the map with a flag set instead of the normal treasure map window.", ref showOnOpen)) {
-                this.Config.ShowOnOpen = showOnOpen;
-                this.Config.Save();
+                this.Plugin.Config.ShowOnOpen = showOnOpen;
+                this.Plugin.Config.Save();
             }
 
             ImGui.Separator();
 
-            var showOnHover = this.Config.ShowOnHover;
+            var showOnHover = this.Plugin.Config.ShowOnHover;
             if (HelpCheckbox("Show on hover", "Open the map with a flag set when hovering over a deciphered map.", ref showOnHover)) {
-                this.Config.ShowOnHover = showOnHover;
-                this.Config.Save();
+                this.Plugin.Config.ShowOnHover = showOnHover;
+                this.Plugin.Config.Save();
             }
 
             ImGui.End();
