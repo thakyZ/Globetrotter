@@ -4,6 +4,7 @@ using System;
 using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.Gui;
+using Dalamud.IoC;
 
 namespace Globetrotter {
     // ReSharper disable once ClassNeverInstantiated.Global
@@ -12,29 +13,26 @@ namespace Globetrotter {
 
         public string Name => "Globetrotter";
 
-        private DalamudPluginInterface Interface { get; }
-        private CommandManager CommandManager { get; }
-        internal DataManager DataManager { get; }
-        internal GameGui GameGui { get; }
-        internal SigScanner SigScanner { get; }
+        [PluginService]
+        private DalamudPluginInterface Interface { get; init; } = null!;
+
+        [PluginService]
+        private CommandManager CommandManager { get; init; } = null!;
+
+        [PluginService]
+        internal DataManager DataManager { get; init; } = null!;
+
+        [PluginService]
+        internal GameGui GameGui { get; init; } = null!;
+
+        [PluginService]
+        internal SigScanner SigScanner { get; init; } = null!;
 
         internal Configuration Config { get; }
         private PluginUi Ui { get; }
         private TreasureMaps Maps { get; }
 
-        public GlobetrotterPlugin(
-            DalamudPluginInterface pluginInterface,
-            CommandManager commandManager,
-            DataManager dataManager,
-            GameGui gameGui,
-            SigScanner scanner
-        ) {
-            this.Interface = pluginInterface;
-            this.CommandManager = commandManager;
-            this.DataManager = dataManager;
-            this.GameGui = gameGui;
-            this.SigScanner = scanner;
-
+        public GlobetrotterPlugin() {
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Config.Initialize(this.Interface);
 
