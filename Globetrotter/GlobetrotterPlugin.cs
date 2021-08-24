@@ -51,7 +51,7 @@ namespace Globetrotter {
         }
 
         private void OnConfigCommand(string command, string args) {
-            this.Ui.OpenSettings(null, null);
+            this.Ui.OpenSettings();
         }
 
         private void OnCommand(string command, string args) {

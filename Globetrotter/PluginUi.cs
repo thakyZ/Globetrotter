@@ -1,5 +1,4 @@
 ﻿using ImGuiNET;
-using System;
 using System.Numerics;
 
 namespace Globetrotter {
@@ -17,7 +16,7 @@ namespace Globetrotter {
             this.Plugin = plugin;
         }
 
-        public void OpenSettings(object? sender, EventArgs? e) {
+        public void OpenSettings() {
             this.DisplaySettings = true;
         }
 
