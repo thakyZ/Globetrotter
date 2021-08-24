@@ -21,7 +21,7 @@ namespace Globetrotter {
 
                 var mapToRow = new Dictionary<uint, uint>();
 
-                foreach (var rank in this.Plugin.DataManager.GetExcelSheet<TreasureHuntRank>()) {
+                foreach (var rank in this.Plugin.DataManager.GetExcelSheet<TreasureHuntRank>()!) {
                     var unopened = rank.ItemName.Value;
                     if (unopened == null) {
                         continue;
@@ -143,7 +143,7 @@ namespace Globetrotter {
                 return;
             }
 
-            var spot = this.Plugin.DataManager.GetExcelSheet<TreasureSpot>().GetRow(rowId, packet.SubRowId);
+            var spot = this.Plugin.DataManager.GetExcelSheet<TreasureSpot>()!.GetRow(rowId, packet.SubRowId);
 
             var loc = spot?.Location?.Value;
             var map = loc?.Map?.Value;
