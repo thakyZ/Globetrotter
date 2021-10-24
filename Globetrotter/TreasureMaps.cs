@@ -39,7 +39,11 @@ namespace Globetrotter {
                         continue;
                     }
 
-                    mapToRow[opened.RowId] = unopened.AdditionalData;
+                    var additionalData = opened.RowId == 2003075
+                        ? 18 // ostensibly/presumably special
+                        : unopened.AdditionalData;
+
+                    mapToRow[opened.RowId] = additionalData;
                 }
 
                 _mapToRow = mapToRow;
