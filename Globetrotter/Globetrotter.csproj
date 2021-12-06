@@ -30,7 +30,7 @@
         </Reference>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.4"/>
+        <PackageReference Include="DalamudPackager" Version="2.1.5"/>
     </ItemGroup>
     <ItemGroup>
         <Content Include="..\icon.png" Link="images/icon.png" CopyToOutputDirectory="PreserveNewest" Visible="false"/>
