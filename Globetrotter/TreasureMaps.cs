@@ -62,11 +62,11 @@ namespace Globetrotter {
             this.Plugin = plugin;
 
             var acsPtr = this.Plugin.SigScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
-            this._acsHook = new Hook<HandleActorControlSelfDelegate>(acsPtr, this.OnACS);
+            this._acsHook = Hook<HandleActorControlSelfDelegate>.FromAddress(acsPtr, this.OnACS);
             this._acsHook.Enable();
 
             var showMapPtr = this.Plugin.SigScanner.ScanText("E8 ?? ?? ?? ?? 40 84 FF 0F 85 ?? ?? ?? ?? 48 8B 0D");
-            this._showMapHook = new Hook<ShowTreasureMapDelegate>(showMapPtr, this.OnShowMap);
+            this._showMapHook = Hook<ShowTreasureMapDelegate>.FromAddress(showMapPtr, this.OnShowMap);
             this._showMapHook.Enable();
         }
 
