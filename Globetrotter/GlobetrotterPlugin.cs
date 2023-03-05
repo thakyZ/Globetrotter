@@ -5,6 +5,8 @@ using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.Gui;
 using Dalamud.IoC;
+using Dalamud.Game.Text;
+using Dalamud.Utility;
 
 namespace Globetrotter {
     // ReSharper disable once ClassNeverInstantiated.Global
@@ -12,32 +14,54 @@ namespace Globetrotter {
         private bool _disposedValue;
 
         public string Name => "Globetrotter";
+    
+        [PluginService]
+        [RequiredVersion("1.0")]
+        private DalamudPluginInterface Interface { get; init; }
 
         [PluginService]
-        private DalamudPluginInterface Interface { get; init; } = null!;
+        [RequiredVersion("1.0")]
+        private CommandManager CommandManager { get; init; }
 
         [PluginService]
-        private CommandManager CommandManager { get; init; } = null!;
+        [RequiredVersion("1.0")]
+        internal DataManager DataManager { get; init; }
 
         [PluginService]
-        internal DataManager DataManager { get; init; } = null!;
+        [RequiredVersion("1.0")]
+        internal GameGui GameGui { get; init; }
 
         [PluginService]
-        internal GameGui GameGui { get; init; } = null!;
+        [RequiredVersion("1.0")]
+        internal SigScanner SigScanner { get; init; }
 
         [PluginService]
-        internal SigScanner SigScanner { get; init; } = null!;
+        [RequiredVersion("1.0")]
+        public ChatGui ChatGui { get; init; }
 
         internal Configuration Config { get; }
+        internal GameIntegration GameIntegration { get; }
         private PluginUi Ui { get; }
         private TreasureMaps Maps { get; }
 
-        public GlobetrotterPlugin() {
-            this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
-            this.Config.Initialize(this.Interface);
+        public GlobetrotterPlugin([RequiredVersion("1.0")] DalamudPluginInterface _interface,
+          [RequiredVersion("1.0")] GameGui gameGui,
+          [RequiredVersion("1.0")] SigScanner sigScanner,
+          [RequiredVersion("1.0")] DataManager dataManager,
+          [RequiredVersion("1.0")] CommandManager commandManager,
+          [RequiredVersion("1.0")] ChatGui chatGui) {
+            this.Config = _interface.GetPluginConfig() as Configuration ?? new Configuration();
+            this.Config.Initialize(_interface);
+            this.Interface = _interface;
+            this.CommandManager = commandManager;
+            this.GameGui = gameGui;
+            this.ChatGui = chatGui;
+            this.SigScanner = sigScanner;
+            this.DataManager = dataManager;
 
             this.Ui = new PluginUi(this);
             this.Maps = new TreasureMaps(this);
+            this.GameIntegration = new GameIntegration(this);
 
             this.Interface.UiBuilder.Draw += this.Ui.Draw;
             this.Interface.UiBuilder.OpenConfigUi += this.Ui.OpenSettings;
@@ -55,7 +79,14 @@ namespace Globetrotter {
         }
 
         private void OnCommand(string command, string args) {
-            this.Maps.OpenMapLocation();
+            var link = false;
+            var echo = false;
+            if (!args.IsNullOrEmpty()) { 
+                string[] multiArgs = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                link = multiArgs[0].ToLower() == "link";
+                echo = multiArgs.Length == 2 && (multiArgs[1].ToLower() == "e" || multiArgs[1].ToLower() == "echo");
+            }
+            this.Maps.OpenMapLocation(link, echo);
         }
 
         protected virtual void Dispose(bool disposing) {
@@ -73,6 +104,11 @@ namespace Globetrotter {
             }
 
             this._disposedValue = true;
+        }
+        
+        public void PrintChat(XivChatEntry msg)
+        {
+            ChatGui.PrintChat(msg);
         }
 
         public void Dispose() {

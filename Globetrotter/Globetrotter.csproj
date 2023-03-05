@@ -1,16 +1,29 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Version>1.2.8</Version>
+        <Version>1.2.9</Version>
         <TargetFramework>net7-windows</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
         <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <Title>Globetrotter</Title>
+        <Platforms>x64</Platforms>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <AssemblyName>$(Title.Replace(" ", ""))</AssemblyName>
+        <OutputPath>bin\Release\</OutputPath>
+    </PropertyGroup>
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <AssemblyName>$(Title.Replace(" ", ""))2</AssemblyName>
+        <OutputPath>$(AppData)\XIVLauncher\devPlugins\$(Title.Replace(" ", ""))\</OutputPath>
+        <BaseOutputPath>$(AppData)\XIVLauncher\devPlugins\$(Title.Replace(" ", ""))\</BaseOutputPath>
     </PropertyGroup>
     <PropertyGroup>
         <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev</DalamudLibPath>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     </PropertyGroup>
     <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))'">
         <DalamudLibPath>$(DALAMUD_HOME)</DalamudLibPath>
@@ -31,16 +44,20 @@
             <HintPath>$(DalamudLibPath)\ImGuiScene.dll</HintPath>
             <Private>False</Private>
         </Reference>
+      <Reference Include="FFXIVClientStructs">
+        <HintPath>$(DalamudLibPath)\FFXIVClientStructs.dll</HintPath>
+        <Private>False</Private>
+      </Reference>
         <Reference Include="Lumina">
             <HintPath>$(DalamudLibPath)\Lumina.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="Lumina.Excel">
             <HintPath>$(DalamudLibPath)\Lumina.Excel.dll</HintPath>
-            <Private>False</Private>
+          <Private>False</Private>
         </Reference>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.10"/>
+        <PackageReference Include="DalamudPackager" Version="2.1.10" />
     </ItemGroup>
 </Project>
