@@ -5,6 +5,8 @@ using Dalamud.Data;
 using Dalamud.Game;
 using Dalamud.Game.Gui;
 using Dalamud.IoC;
+using Dalamud.Game.Text;
+using Dalamud.Utility;
 
 namespace Globetrotter {
     // ReSharper disable once ClassNeverInstantiated.Global
@@ -28,7 +30,11 @@ namespace Globetrotter {
         [PluginService]
         internal SigScanner SigScanner { get; init; } = null!;
 
+        [PluginService]
+        public ChatGui ChatGui { get; init; } = null!;
+
         internal Configuration Config { get; }
+        internal GameIntegration GameIntegration { get; }
         private PluginUi Ui { get; }
         private TreasureMaps Maps { get; }
 
@@ -38,6 +44,7 @@ namespace Globetrotter {
 
             this.Ui = new PluginUi(this);
             this.Maps = new TreasureMaps(this);
+            this.GameIntegration = new GameIntegration(this);
 
             this.Interface.UiBuilder.Draw += this.Ui.Draw;
             this.Interface.UiBuilder.OpenConfigUi += this.Ui.OpenSettings;
@@ -55,7 +62,14 @@ namespace Globetrotter {
         }
 
         private void OnCommand(string command, string args) {
-            this.Maps.OpenMapLocation();
+            var link = false;
+            var echo = false;
+            if (!args.IsNullOrEmpty()) {
+                string[] multiArgs = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                link = multiArgs[0].ToLower() == "link";
+                echo = multiArgs.Length == 2 && (multiArgs[1].ToLower() == "e" || multiArgs[1].ToLower() == "echo");
+            }
+            this.Maps.OpenMapLocation(link, echo);
         }
 
         protected virtual void Dispose(bool disposing) {
@@ -73,6 +87,11 @@ namespace Globetrotter {
             }
 
             this._disposedValue = true;
+        }
+
+        public void PrintChat(XivChatEntry msg)
+        {
+            ChatGui.PrintChat(msg);
         }
 
         public void Dispose() {

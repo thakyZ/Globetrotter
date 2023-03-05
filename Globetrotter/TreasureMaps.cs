@@ -6,6 +6,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Logging;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
 
 namespace Globetrotter {
     internal sealed class TreasureMaps : IDisposable {
@@ -132,7 +134,7 @@ namespace Globetrotter {
             this._lastMap = packet;
         }
 
-        public void OpenMapLocation() {
+        public void OpenMapLocation(bool link = false, bool echo = false) {
             var packet = this._lastMap;
 
             if (packet == null) {
@@ -163,6 +165,16 @@ namespace Globetrotter {
             );
 
             this.Plugin.GameGui.OpenMapWithMapLink(mapLink);
+
+            if (link && echo) {
+                this.Plugin.PrintChat(new XivChatEntry
+                {
+                    Message = SeString.CreateMapLink(terr.RowId, map.RowId, x, y, 0f),
+                    Type = XivChatType.Debug
+                });;
+            } else if (link && !echo) {
+                this.Plugin.GameIntegration.InsertFlagInChat();
+            }
 
             if (this._lastMap != null) {
                 this._lastMap.JustOpened = false;
