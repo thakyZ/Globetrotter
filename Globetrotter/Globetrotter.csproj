@@ -12,25 +12,31 @@
         <Title>Globetrotter</Title>
         <Platforms>x64</Platforms>
     </PropertyGroup>
+
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-        <AssemblyName>$(Title.Replace(" ", ""))</AssemblyName>
+        <AssemblyName>$(MSBuildProjectName)</AssemblyName>
         <OutputPath>bin\Release\</OutputPath>
     </PropertyGroup>
+
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
-        <AssemblyName>$(Title.Replace(" ", ""))2</AssemblyName>
-        <OutputPath>$(AppData)\XIVLauncher\devPlugins\$(Title.Replace(" ", ""))\</OutputPath>
-        <BaseOutputPath>$(AppData)\XIVLauncher\devPlugins\$(Title.Replace(" ", ""))\</BaseOutputPath>
+        <AssemblyName>$(MSBuildProjectName)2</AssemblyName>
+        <OutputPath>$(AppData)\XIVLauncher\devPlugins\$(MSBuildProjectName)\</OutputPath>
+        <BaseOutputPath>$(AppData)\XIVLauncher\devPlugins\$(MSBuildProjectName)\</BaseOutputPath>
     </PropertyGroup>
+
     <PropertyGroup>
         <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev</DalamudLibPath>
         <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     </PropertyGroup>
+
     <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))'">
         <DalamudLibPath>$(DALAMUD_HOME)</DalamudLibPath>
     </PropertyGroup>
+
     <PropertyGroup Condition="'$(IsCI)' == 'true'">
         <DalamudLibPath>$(HOME)/dalamud</DalamudLibPath>
     </PropertyGroup>
+
     <ItemGroup>
         <Reference Include="Dalamud">
             <HintPath>$(DalamudLibPath)\Dalamud.dll</HintPath>
@@ -57,7 +63,41 @@
           <Private>False</Private>
         </Reference>
     </ItemGroup>
-    <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.10" />
+
+    <ItemGroup Condition=" '$(Configuration)' == 'Release' ">
+        <Content Include=".\$(MSBuildProjectName).yaml">
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Content>
+        <None Remove=".\$(MSBuildProjectName)2.yaml" />
     </ItemGroup>
+
+    <ItemGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <None Remove=".\$(MSBuildProjectName).yaml" />
+        <Content Include=".\$(MSBuildProjectName)2.yaml" Link="$(MSBuildProjectName)2.yaml">
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="DalamudPackager" Version="2.1.11" />
+    </ItemGroup>
+
+    <ItemGroup Condition="Exists('$(appdata)\MSRuleSets\sonarlint.editorconfig')">
+        <None Include="$(appdata)\MSRuleSets\sonarlint.editorconfig" Link="sonarlint.editorconfig" />
+        <EditorConfigFiles Remove="$(appdata)\MSRuleSets\sonarlint.editorconfig" />
+    </ItemGroup>
+
+    <ItemGroup Condition="Exists('$(appdata)\MSRuleSets\roslynator.editorconfig')">
+        <None Include="$(appdata)\MSRuleSets\roslynator.editorconfig" Link="roslynator.editorconfig" />
+        <EditorConfigFiles Remove="$(appdata)\MSRuleSets\roslynator.editorconfig" />
+    </ItemGroup>
+
+    <Target Name="CleanOutDir" AfterTargets="Build">
+        <ItemGroup>
+            <DeleteAssemblies Include="$(TargetDir)$(AssemblyName).deps.json" />
+        </ItemGroup>
+        <Message Text="Deleting @(DeleteAssemblies)" Importance="high" />
+        <Delete Files="@(DeleteAssemblies)" />
+        <RemoveDir Directories="$(TargetDir)\ref\" />
+    </Target>
 </Project>
