@@ -7,6 +7,10 @@ using Dalamud.Game.Gui;
 using Dalamud.IoC;
 using Dalamud.Game.Text;
 using Dalamud.Utility;
+using XivCommon;
+using System.Linq;
+using System.Globalization;
+using ImGuiNET;
 
 namespace Globetrotter {
     // ReSharper disable once ClassNeverInstantiated.Global
@@ -17,7 +21,7 @@ namespace Globetrotter {
     
         [PluginService]
         [RequiredVersion("1.0")]
-        private DalamudPluginInterface Interface { get; init; }
+        internal DalamudPluginInterface Interface { get; init; }
 
         [PluginService]
         [RequiredVersion("1.0")]
@@ -37,12 +41,13 @@ namespace Globetrotter {
 
         [PluginService]
         [RequiredVersion("1.0")]
-        public ChatGui ChatGui { get; init; }
+        internal ChatGui ChatGui { get; init; }
 
         internal Configuration Config { get; }
-        internal GameIntegration GameIntegration { get; }
+        internal ChatTwoIntegration ChatTwoIntegration { get; }
+        internal XivCommonBase XivCommon { get; }
         private PluginUi Ui { get; }
-        private TreasureMaps Maps { get; }
+        internal TreasureMaps Maps { get; }
 
         public GlobetrotterPlugin([RequiredVersion("1.0")] DalamudPluginInterface _interface,
           [RequiredVersion("1.0")] GameGui gameGui,
@@ -61,7 +66,8 @@ namespace Globetrotter {
 
             this.Ui = new PluginUi(this);
             this.Maps = new TreasureMaps(this);
-            this.GameIntegration = new GameIntegration(this);
+            this.XivCommon = new XivCommonBase(Hooks.None);
+            this.ChatTwoIntegration = new ChatTwoIntegration(this);
 
             this.Interface.UiBuilder.Draw += this.Ui.Draw;
             this.Interface.UiBuilder.OpenConfigUi += this.Ui.OpenSettings;
@@ -83,8 +89,10 @@ namespace Globetrotter {
             var echo = false;
             if (!args.IsNullOrEmpty()) { 
                 string[] multiArgs = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                link = multiArgs[0].ToLower() == "link";
-                echo = multiArgs.Length == 2 && (multiArgs[1].ToLower() == "e" || multiArgs[1].ToLower() == "echo");
+                link = multiArgs.Any(x => x.ToLower().Equals("link", StringComparison.InvariantCultureIgnoreCase)
+                                                     || x.ToLower().Equals("l", StringComparison.InvariantCultureIgnoreCase));
+                echo = multiArgs.Any(x => x.ToLower().Equals("echo", StringComparison.InvariantCultureIgnoreCase)
+                                                     || x.ToLower().Equals("e", StringComparison.InvariantCultureIgnoreCase));
             }
             this.Maps.OpenMapLocation(link, echo);
         }
@@ -101,15 +109,21 @@ namespace Globetrotter {
                 this.Maps.Dispose();
                 this.CommandManager.RemoveHandler("/pglobetrotter");
                 this.CommandManager.RemoveHandler("/tmap");
+                this.ChatTwoIntegration.Dispose();
             }
 
             this._disposedValue = true;
         }
         
-        public void PrintChat(XivChatEntry msg)
-        {
-            ChatGui.PrintChat(msg);
+        public void PrintChat(XivChatEntry msg) {
+            this.ChatGui.PrintChat(msg);
         }
+        
+        public void PrintChat(string msg) {
+            this.ChatGui.Print(msg);
+        }
+
+        internal static void CopyToClipboard(string message) => ImGui.SetClipboardText(message);
 
         public void Dispose() {
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method

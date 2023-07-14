@@ -20,8 +20,8 @@
 
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <AssemblyName>$(MSBuildProjectName)2</AssemblyName>
-        <OutputPath>$(AppData)\XIVLauncher\devPlugins\$(MSBuildProjectName)\</OutputPath>
-        <BaseOutputPath>$(AppData)\XIVLauncher\devPlugins\$(MSBuildProjectName)\</BaseOutputPath>
+        <OutputPath>$(DalamudDevPlugins)\$(MSBuildProjectName)\</OutputPath>
+        <BaseOutputPath>$(DalamudDevPlugins)\$(MSBuildProjectName)\</BaseOutputPath>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -50,17 +50,17 @@
             <HintPath>$(DalamudLibPath)\ImGuiScene.dll</HintPath>
             <Private>False</Private>
         </Reference>
-      <Reference Include="FFXIVClientStructs">
-        <HintPath>$(DalamudLibPath)\FFXIVClientStructs.dll</HintPath>
-        <Private>False</Private>
-      </Reference>
+        <Reference Include="FFXIVClientStructs">
+            <HintPath>$(DalamudLibPath)\FFXIVClientStructs.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
         <Reference Include="Lumina">
             <HintPath>$(DalamudLibPath)\Lumina.dll</HintPath>
             <Private>False</Private>
         </Reference>
         <Reference Include="Lumina.Excel">
             <HintPath>$(DalamudLibPath)\Lumina.Excel.dll</HintPath>
-          <Private>False</Private>
+            <Private>False</Private>
         </Reference>
     </ItemGroup>
 
@@ -80,6 +80,7 @@
 
     <ItemGroup>
         <PackageReference Include="DalamudPackager" Version="2.1.11" />
+        <PackageReference Include="XivCommon" Version="7.0.2" />
     </ItemGroup>
 
     <ItemGroup Condition="Exists('$(appdata)\MSRuleSets\sonarlint.editorconfig')">
