@@ -6,9 +6,17 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
 using Dalamud.Logging;
+using Dalamud.Game.Text;
+using Dalamud.Game.Text.SeStringHandling;
+using System.Net.Sockets;
+using Dalamud.Utility;
+using static FFXIVClientStructs.FFXIV.Client.Game.Character.Character;
+using static System.Net.Mime.MediaTypeNames;
+using System.Text;
 
 namespace Globetrotter {
     internal sealed class TreasureMaps : IDisposable {
+
         private const uint TreasureMapsCode = 0x54;
 
         private static Dictionary<uint, uint>? _mapToRow;
@@ -51,12 +59,25 @@ namespace Globetrotter {
         private GlobetrotterPlugin Plugin { get; }
         private TreasureMapPacket? _lastMap;
 
+        /// <summary>
+        /// Gets the _lastMap EventId
+        /// <para>
+        /// If the _lastMap object is null it will return the event id
+        /// of a Archaeoskin Treasure Map as a backup and a safety
+        /// precaution.
+        /// </para>
+        /// </summary>
+        private uint LastMapEventId => _lastMap?.EventItemId ?? 2001762;
+
         private delegate char HandleActorControlSelfDelegate(long a1, long a2, IntPtr dataPtr);
 
         private delegate IntPtr ShowTreasureMapDelegate(IntPtr manager, ushort rowId, ushort subRowId, byte a4);
 
         private readonly Hook<HandleActorControlSelfDelegate> _acsHook;
         private readonly Hook<ShowTreasureMapDelegate> _showMapHook;
+
+
+        private List<uint> UsedPayloadIds { get; } = new();
 
         public TreasureMaps(GlobetrotterPlugin plugin) {
             this.Plugin = plugin;
@@ -99,7 +120,7 @@ namespace Globetrotter {
             if (this._lastMap == null) {
                 try {
                     var eventItemId = this.MapToRow.First(entry => entry.Value == rowId);
-                    this._lastMap = new TreasureMapPacket(eventItemId.Key, subRowId, false);
+                    this._lastMap = new TreasureMapPacket(eventItemId.Key, subRowId, false, ToMapName(eventItemId.Key));
                 } catch (InvalidOperationException) {
                     // no-op
                 }
@@ -132,44 +153,119 @@ namespace Globetrotter {
             this._lastMap = packet;
         }
 
-        public void OpenMapLocation() {
+        public MapLinkPayload? GetMapLinkPayload(out TerritoryType? terr, out Map? map, out float x, out float y) {
+            x = y = 0.0f;
+            terr = null;
+            map = null;
             var packet = this._lastMap;
 
             if (packet == null) {
-                return;
+                return null;
             }
 
             if (!this.MapToRow.TryGetValue(packet.EventItemId, out var rowId)) {
-                return;
+                return null;
             }
 
             var spot = this.Plugin.DataManager.GetExcelSheet<TreasureSpot>()!.GetRow(rowId, packet.SubRowId);
 
             var loc = spot?.Location?.Value;
-            var map = loc?.Map?.Value;
-            var terr = map?.TerritoryType?.Value;
+            map = loc?.Map?.Value;
+            terr = map?.TerritoryType?.Value;
 
             if (terr == null) {
-                return;
+                return null;
             }
 
-            var x = ToMapCoordinate(loc!.X, map!.SizeFactor);
-            var y = ToMapCoordinate(loc.Z, map.SizeFactor);
-            var mapLink = new MapLinkPayload(
+            x = ToMapCoordinate(loc!.X, map!.SizeFactor);
+            y = ToMapCoordinate(loc.Z, map.SizeFactor);
+            return new MapLinkPayload(
                 terr.RowId,
                 map.RowId,
                 ConvertMapCoordinateToRawPosition(x, map.SizeFactor),
                 ConvertMapCoordinateToRawPosition(y, map.SizeFactor)
             );
+        }
+
+        public MapLinkPayload? GetMapLinkPayload() {
+            return this.GetMapLinkPayload(out _, out _, out _, out _);
+        }
+
+        public SeStringBuilder DrawMapName(SeStringBuilder seStringBuilder) {
+            var mapName = _lastMap?.TreasureMapName ?? "Unknown";
+            var isSpecial = mapName.EndsWith("special treasure map", StringComparison.CurrentCultureIgnoreCase);
+
+            if (isSpecial) {
+                seStringBuilder = seStringBuilder.AddUiGlow(578);
+            } else {
+                seStringBuilder = seStringBuilder.AddUiForeground(575);
+            }
+
+            seStringBuilder = seStringBuilder.AddUiForeground(mapName.EndsWith("special treasure map", StringComparison.CurrentCultureIgnoreCase) ? (ushort)578 : (ushort)575);
+            seStringBuilder = seStringBuilder.AddText(string.Format("{0}", _lastMap?.TreasureMapName ?? "Unknown"));
+
+            if (isSpecial) {
+                seStringBuilder = seStringBuilder.AddUiGlowOff();
+            } else {
+                seStringBuilder = seStringBuilder.AddUiForegroundOff();
+            }
+            return seStringBuilder;
+        }
+
+        public DalamudLinkPayload CreatePayload(uint id) {
+            if (UsedPayloadIds.Contains(id)) {
+                UsedPayloadIds.RemoveAt(UsedPayloadIds.FindIndex(0, x => x == id));
+                this.Plugin.Interface.RemoveChatLinkHandler(id);
+            }
+            UsedPayloadIds.Add(id);
+            return this.Plugin.Interface.AddChatLinkHandler(id,
+                    (i, m) => GlobetrotterPlugin.CopyToClipboard("My map is at <flag>"));
+        }
+
+        public void OpenMapLocation(bool link = false, bool echo = false) {
+            var mapLink = GetMapLinkPayload(out TerritoryType? terr, out Map? map, out float x, out float y);
+
+            if (mapLink == null || terr == null || map == null) {
+                return;
+            }
 
             this.Plugin.GameGui.OpenMapWithMapLink(mapLink);
+
+            if (echo) {
+                DalamudLinkPayload payload = CreatePayload(LastMapEventId);
+                SeStringBuilder seStringBuilder = new SeStringBuilder();
+                seStringBuilder = DrawMapName(seStringBuilder);
+                seStringBuilder = seStringBuilder.AddText(" ");
+                seStringBuilder = seStringBuilder.Append(SeString.CreateMapLink(terr.RowId, map.RowId, x, y, 0f));
+                seStringBuilder = seStringBuilder.AddText(" ");
+                seStringBuilder = seStringBuilder.AddUiForeground(32);
+                seStringBuilder = seStringBuilder.Add(payload);
+                seStringBuilder = seStringBuilder.AddText($"[Click to copy]");
+                seStringBuilder = seStringBuilder.Add(RawPayload.LinkTerminator);
+                seStringBuilder = seStringBuilder.AddUiForegroundOff();
+
+                this.Plugin.PrintChat(new XivChatEntry
+                {
+                    Message = seStringBuilder.Build(),
+                    Type = XivChatType.Debug
+                });
+                
+            }
+            if (link) {
+                this.Plugin.PrintChat(new XivChatEntry
+                {
+                    Message = "Copied message to clipboard...",
+                    Type = XivChatType.Debug
+                });
+                GlobetrotterPlugin.CopyToClipboard("My map is at <flag>");
+            }
 
             if (this._lastMap != null) {
                 this._lastMap.JustOpened = false;
             }
         }
 
-        private static TreasureMapPacket? ParsePacket(IntPtr dataPtr) {
+        private TreasureMapPacket? ParsePacket(IntPtr dataPtr) {
             uint category = Marshal.ReadByte(dataPtr);
             if (category != TreasureMapsCode) {
                 return null;
@@ -186,7 +282,7 @@ namespace Globetrotter {
             var subRowId = param2;
             var justOpened = param3 == 1;
 
-            return new TreasureMapPacket(eventItemId, subRowId, justOpened);
+            return new TreasureMapPacket(eventItemId, subRowId, justOpened, ToMapName(eventItemId));
         }
 
         private static int ConvertMapCoordinateToRawPosition(float pos, float scale) {
@@ -204,14 +300,21 @@ namespace Globetrotter {
             val *= c;
             return (41f / c * ((val + 1024f) / 2048f)) + 1;
         }
+
+        private string ToMapName(uint eventItemId) {
+            var eventItem = this.Plugin.DataManager.GetExcelSheet<EventItem>()!.GetRow(eventItemId);
+            return eventItem?.Name.ToDalamudString().TextValue ?? "Unknown";
+        }
     }
 
     internal class TreasureMapPacket {
         public uint EventItemId { get; }
+        public string TreasureMapName { get; }
         public uint SubRowId { get; }
         public bool JustOpened { get; set; }
 
-        public TreasureMapPacket(uint eventItemId, uint subRowId, bool justOpened) {
+        public TreasureMapPacket(uint eventItemId, uint subRowId, bool justOpened, string treasureMapName) {
+            TreasureMapName = treasureMapName;
             this.EventItemId = eventItemId;
             this.SubRowId = subRowId;
             this.JustOpened = justOpened;

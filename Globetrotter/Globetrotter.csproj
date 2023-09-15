@@ -8,16 +8,35 @@
         <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
         <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
         <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <Title>Globetrotter</Title>
+        <Platforms>x64</Platforms>
     </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <AssemblyName>$(MSBuildProjectName)</AssemblyName>
+        <OutputPath>bin\Release\</OutputPath>
+    </PropertyGroup>
+
+    <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <AssemblyName>$(MSBuildProjectName)2</AssemblyName>
+        <OutputPath>$(DalamudDevPlugins)\$(MSBuildProjectName)\</OutputPath>
+        <BaseOutputPath>$(DalamudDevPlugins)\$(MSBuildProjectName)\</BaseOutputPath>
+    </PropertyGroup>
+
     <PropertyGroup>
         <DalamudLibPath>$(AppData)\XIVLauncher\addon\Hooks\dev</DalamudLibPath>
+        <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
     </PropertyGroup>
+
     <PropertyGroup Condition="'$([System.Runtime.InteropServices.RuntimeInformation]::IsOSPlatform($([System.Runtime.InteropServices.OSPlatform]::Linux)))'">
         <DalamudLibPath>$(DALAMUD_HOME)</DalamudLibPath>
     </PropertyGroup>
+
     <PropertyGroup Condition="'$(IsCI)' == 'true'">
         <DalamudLibPath>$(HOME)/dalamud</DalamudLibPath>
     </PropertyGroup>
+
     <ItemGroup>
         <Reference Include="Dalamud">
             <HintPath>$(DalamudLibPath)\Dalamud.dll</HintPath>
@@ -31,6 +50,10 @@
             <HintPath>$(DalamudLibPath)\ImGuiScene.dll</HintPath>
             <Private>False</Private>
         </Reference>
+        <Reference Include="FFXIVClientStructs">
+            <HintPath>$(DalamudLibPath)\FFXIVClientStructs.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
         <Reference Include="Lumina">
             <HintPath>$(DalamudLibPath)\Lumina.dll</HintPath>
             <Private>False</Private>
@@ -40,7 +63,42 @@
             <Private>False</Private>
         </Reference>
     </ItemGroup>
-    <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.10"/>
+
+    <ItemGroup Condition=" '$(Configuration)' == 'Release' ">
+        <Content Include=".\$(MSBuildProjectName).yaml">
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Content>
+        <None Remove=".\$(MSBuildProjectName)2.yaml" />
     </ItemGroup>
+
+    <ItemGroup Condition=" '$(Configuration)' == 'Debug' ">
+        <None Remove=".\$(MSBuildProjectName).yaml" />
+        <Content Include=".\$(MSBuildProjectName)2.yaml" Link="$(MSBuildProjectName)2.yaml">
+            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="DalamudPackager" Version="2.1.11" />
+        <PackageReference Include="XivCommon" Version="7.0.2" />
+    </ItemGroup>
+
+    <ItemGroup Condition="Exists('$(appdata)\MSRuleSets\sonarlint.editorconfig')">
+        <None Include="$(appdata)\MSRuleSets\sonarlint.editorconfig" Link="sonarlint.editorconfig" />
+        <EditorConfigFiles Remove="$(appdata)\MSRuleSets\sonarlint.editorconfig" />
+    </ItemGroup>
+
+    <ItemGroup Condition="Exists('$(appdata)\MSRuleSets\roslynator.editorconfig')">
+        <None Include="$(appdata)\MSRuleSets\roslynator.editorconfig" Link="roslynator.editorconfig" />
+        <EditorConfigFiles Remove="$(appdata)\MSRuleSets\roslynator.editorconfig" />
+    </ItemGroup>
+
+    <Target Name="CleanOutDir" AfterTargets="Build">
+        <ItemGroup>
+            <DeleteAssemblies Include="$(TargetDir)$(AssemblyName).deps.json" />
+        </ItemGroup>
+        <Message Text="Deleting @(DeleteAssemblies)" Importance="high" />
+        <Delete Files="@(DeleteAssemblies)" />
+        <RemoveDir Directories="$(TargetDir)\ref\" />
+    </Target>
 </Project>
