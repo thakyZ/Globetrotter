@@ -10,6 +10,7 @@ using Dalamud.Utility;
 using XivCommon;
 using System.Linq;
 using System.Globalization;
+using System.Diagnostics.CodeAnalysis;
 using ImGuiNET;
 
 namespace Globetrotter {
@@ -20,43 +21,43 @@ namespace Globetrotter {
         public string Name => "Globetrotter";
 
         [PluginService]
-        [RequiredVersion("1.0")]
-        internal DalamudPluginInterface Interface { get; init; } = null!;
+        [AllowNull, NotNull]
+        private DalamudPluginInterface Interface { get; set; }
 
         [PluginService]
-        [RequiredVersion("1.0")]
-        private CommandManager CommandManager { get; init; } = null!;
+        [AllowNull, NotNull]
+        private CommandManager CommandManager { get; set; }
 
         [PluginService]
-        [RequiredVersion("1.0")]
-        internal DataManager DataManager { get; init; } = null!;
+        [AllowNull, NotNull]
+        internal DataManager DataManager { get; set; }
 
         [PluginService]
-        [RequiredVersion("1.0")]
-        internal GameGui GameGui { get; init; } = null!;
+        [AllowNull, NotNull]
+        internal GameGui GameGui { get; set; }
 
         [PluginService]
-        [RequiredVersion("1.0")]
-        internal SigScanner SigScanner { get; init; } = null!;
+        [AllowNull, NotNull]
+        internal SigScanner SigScanner { get; set; }
 
         [PluginService]
-        [RequiredVersion("1.0")]
-        internal ChatGui ChatGui { get; init; }
+        [AllowNull, NotNull]
+        internal ChatGui ChatGui { get; set; }
 
         internal Configuration Config { get; }
         internal ChatTwoIntegration ChatTwoIntegration { get; }
         internal XivCommonBase XivCommon { get; }
         private PluginUi Ui { get; }
-        internal TreasureMaps Maps { get; }
+        private TreasureMaps Maps { get; }
 
         public GlobetrotterPlugin() {
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Config.Initialize(this.Interface);
 
             this.Ui = new PluginUi(this);
-            this.Maps = new TreasureMaps(this);
+            this.Maps = new TreasureMaps(this, this.Interface);
             this.XivCommon = new XivCommonBase(Hooks.None);
-            this.ChatTwoIntegration = new ChatTwoIntegration(this);
+            this.ChatTwoIntegration = new ChatTwoIntegration(this.Interface, this.Maps);
 
             this.Interface.UiBuilder.Draw += this.Ui.Draw;
             this.Interface.UiBuilder.OpenConfigUi += this.Ui.OpenSettings;

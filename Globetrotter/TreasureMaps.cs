@@ -13,6 +13,7 @@ using Dalamud.Utility;
 using static FFXIVClientStructs.FFXIV.Client.Game.Character.Character;
 using static System.Net.Mime.MediaTypeNames;
 using System.Text;
+using Dalamud.Plugin;
 
 namespace Globetrotter {
     internal sealed class TreasureMaps : IDisposable {
@@ -57,6 +58,7 @@ namespace Globetrotter {
         }
 
         private GlobetrotterPlugin Plugin { get; }
+        private DalamudPluginInterface PluginInterface { get; }
         private TreasureMapPacket? _lastMap;
 
         /// <summary>
@@ -79,8 +81,9 @@ namespace Globetrotter {
 
         private List<uint> UsedPayloadIds { get; } = new();
 
-        public TreasureMaps(GlobetrotterPlugin plugin) {
+        public TreasureMaps(GlobetrotterPlugin plugin, DalamudPluginInterface pluginInterface) {
             this.Plugin = plugin;
+            this.PluginInterface = pluginInterface;
 
             var acsPtr = this.Plugin.SigScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
             this._acsHook = Hook<HandleActorControlSelfDelegate>.FromAddress(acsPtr, this.OnACS);
@@ -195,30 +198,23 @@ namespace Globetrotter {
             var mapName = _lastMap?.TreasureMapName ?? "Unknown";
             var isSpecial = mapName.EndsWith("special treasure map", StringComparison.CurrentCultureIgnoreCase);
 
-            if (isSpecial) {
-                seStringBuilder = seStringBuilder.AddUiGlow(578);
-            } else {
-                seStringBuilder = seStringBuilder.AddUiForeground(575);
-            }
+            seStringBuilder = isSpecial ? seStringBuilder.AddUiGlow(578) : seStringBuilder.AddUiForeground(575);
 
             seStringBuilder = seStringBuilder.AddUiForeground(mapName.EndsWith("special treasure map", StringComparison.CurrentCultureIgnoreCase) ? (ushort)578 : (ushort)575);
             seStringBuilder = seStringBuilder.AddText(string.Format("{0}", _lastMap?.TreasureMapName ?? "Unknown"));
 
-            if (isSpecial) {
-                seStringBuilder = seStringBuilder.AddUiGlowOff();
-            } else {
-                seStringBuilder = seStringBuilder.AddUiForegroundOff();
-            }
+            seStringBuilder = isSpecial ? seStringBuilder.AddUiGlowOff() : seStringBuilder.AddUiForegroundOff();
+
             return seStringBuilder;
         }
 
         public DalamudLinkPayload CreatePayload(uint id) {
             if (UsedPayloadIds.Contains(id)) {
                 UsedPayloadIds.RemoveAt(UsedPayloadIds.FindIndex(0, x => x == id));
-                this.Plugin.Interface.RemoveChatLinkHandler(id);
+                this.PluginInterface.RemoveChatLinkHandler(id);
             }
             UsedPayloadIds.Add(id);
-            return this.Plugin.Interface.AddChatLinkHandler(id,
+            return this.PluginInterface.AddChatLinkHandler(id,
                     (i, m) => GlobetrotterPlugin.CopyToClipboard("My map is at <flag>"));
         }
 

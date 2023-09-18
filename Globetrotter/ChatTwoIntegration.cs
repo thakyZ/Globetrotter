@@ -10,7 +10,8 @@ using ImGuiNET;
 
 namespace Globetrotter {
     internal class ChatTwoIntegration : IDisposable {
-        private GlobetrotterPlugin Plugin { get; }
+        private DalamudPluginInterface PluginInterface { get; }
+        private TreasureMaps Maps { get; }
 
         private ICallGateSubscriber<string> Register { get; }
         private ICallGateSubscriber<string, object?> Unregister { get; }
@@ -19,13 +20,14 @@ namespace Globetrotter {
 
         private string? _id;
 
-        internal ChatTwoIntegration(GlobetrotterPlugin plugin) {
-            this.Plugin = plugin;
+        internal ChatTwoIntegration(DalamudPluginInterface pluginInterface, TreasureMaps maps) {
+            this.PluginInterface = pluginInterface;
+            this.Maps = maps;
 
-            this.Register = this.Plugin.Interface.GetIpcSubscriber<string>("ChatTwo.Register");
-            this.Unregister = this.Plugin.Interface.GetIpcSubscriber<string, object?>("ChatTwo.Unregister");
-            this.Invoke = this.Plugin.Interface.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
-            this.Available = this.Plugin.Interface.GetIpcSubscriber<object?>("ChatTwo.Available");
+            this.Register = this.PluginInterface.GetIpcSubscriber<string>("ChatTwo.Register");
+            this.Unregister = this.PluginInterface.GetIpcSubscriber<string, object?>("ChatTwo.Unregister");
+            this.Invoke = this.PluginInterface.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
+            this.Available = this.PluginInterface.GetIpcSubscriber<object?>("ChatTwo.Available");
 
             this.Available.Subscribe(this.DoRegister);
             try {
@@ -67,7 +69,7 @@ namespace Globetrotter {
             }
 
             if (ImGui.Selectable("Link Opened Map and Copy to Clipboard")) {
-                this.Plugin.Maps.OpenMapLocation(true, false);
+                this.Maps.OpenMapLocation(true, false);
             }
         }
     }
