@@ -1,38 +1,41 @@
 ﻿using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using System;
-using Dalamud.Data;
 using Dalamud.Game;
-using Dalamud.Game.Gui;
 using Dalamud.IoC;
+using Dalamud.Plugin.Services;
 
 namespace Globetrotter {
     // ReSharper disable once ClassNeverInstantiated.Global
-    public class GlobetrotterPlugin : IDalamudPlugin {
+    public class Plugin : IDalamudPlugin {
         private bool _disposedValue;
 
-        public string Name => "Globetrotter";
+        [PluginService]
+        internal static IPluginLog Log { get; private set; } = null!;
 
         [PluginService]
         private DalamudPluginInterface Interface { get; init; } = null!;
 
         [PluginService]
-        private CommandManager CommandManager { get; init; } = null!;
+        private ICommandManager CommandManager { get; init; } = null!;
 
         [PluginService]
-        internal DataManager DataManager { get; init; } = null!;
+        internal IDataManager DataManager { get; init; } = null!;
 
         [PluginService]
-        internal GameGui GameGui { get; init; } = null!;
+        internal IGameGui GameGui { get; init; } = null!;
 
         [PluginService]
-        internal SigScanner SigScanner { get; init; } = null!;
+        internal ISigScanner SigScanner { get; init; } = null!;
+
+        [PluginService]
+        internal IGameInteropProvider GameInteropProvider { get; init; } = null!;
 
         internal Configuration Config { get; }
         private PluginUi Ui { get; }
         private TreasureMaps Maps { get; }
 
-        public GlobetrotterPlugin() {
+        public Plugin() {
             this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Config.Initialize(this.Interface);
 

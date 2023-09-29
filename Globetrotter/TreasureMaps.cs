@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using Dalamud.Game.Text.SeStringHandling.Payloads;
-using Dalamud.Logging;
 
 namespace Globetrotter {
     internal sealed class TreasureMaps : IDisposable {
@@ -48,7 +47,7 @@ namespace Globetrotter {
             }
         }
 
-        private GlobetrotterPlugin Plugin { get; }
+        private Plugin Plugin { get; }
         private TreasureMapPacket? _lastMap;
 
         private delegate char HandleActorControlSelfDelegate(long a1, long a2, IntPtr dataPtr);
@@ -58,15 +57,15 @@ namespace Globetrotter {
         private readonly Hook<HandleActorControlSelfDelegate> _acsHook;
         private readonly Hook<ShowTreasureMapDelegate> _showMapHook;
 
-        public TreasureMaps(GlobetrotterPlugin plugin) {
+        public TreasureMaps(Plugin plugin) {
             this.Plugin = plugin;
 
             var acsPtr = this.Plugin.SigScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
-            this._acsHook = Hook<HandleActorControlSelfDelegate>.FromAddress(acsPtr, this.OnACS);
+            this._acsHook = this.Plugin.GameInteropProvider.HookFromAddress<HandleActorControlSelfDelegate>(acsPtr, this.OnACS);
             this._acsHook.Enable();
 
             var showMapPtr = this.Plugin.SigScanner.ScanText("E8 ?? ?? ?? ?? 40 84 FF 0F 85 ?? ?? ?? ?? 48 8B 0D");
-            this._showMapHook = Hook<ShowTreasureMapDelegate>.FromAddress(showMapPtr, this.OnShowMap);
+            this._showMapHook = this.Plugin.GameInteropProvider.HookFromAddress<ShowTreasureMapDelegate>(showMapPtr, this.OnShowMap);
             this._showMapHook.Enable();
         }
 
@@ -89,7 +88,7 @@ namespace Globetrotter {
                     return IntPtr.Zero;
                 }
             } catch (Exception ex) {
-                PluginLog.LogError(ex, "Exception on show map");
+                Plugin.Log.Error(ex, "Exception on show map");
             }
 
             return this._showMapHook.Original(manager, rowId, subRowId, a4);
@@ -117,7 +116,7 @@ namespace Globetrotter {
             try {
                 this.OnACSInner(dataPtr);
             } catch (Exception ex) {
-                PluginLog.LogError(ex, "Exception on ACS");
+                Plugin.Log.Error(ex, "Exception on ACS");
             }
 
             return this._acsHook.Original(a1, a2, dataPtr);
