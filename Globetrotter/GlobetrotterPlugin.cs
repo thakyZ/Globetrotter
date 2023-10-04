@@ -12,6 +12,7 @@ using System.Linq;
 using System.Globalization;
 using System.Diagnostics.CodeAnalysis;
 using ImGuiNET;
+using Dalamud.Plugin.Services;
 
 namespace Globetrotter {
     // ReSharper disable once ClassNeverInstantiated.Global
@@ -22,27 +23,35 @@ namespace Globetrotter {
 
         [PluginService]
         [AllowNull, NotNull]
-        private DalamudPluginInterface Interface { get; set; }
+        internal static DalamudPluginInterface Interface { get; set; }
 
         [PluginService]
         [AllowNull, NotNull]
-        private CommandManager CommandManager { get; set; }
+        private static ICommandManager CommandManager { get; set; }
 
         [PluginService]
         [AllowNull, NotNull]
-        internal DataManager DataManager { get; set; }
+        internal static IDataManager DataManager { get; set; }
 
         [PluginService]
         [AllowNull, NotNull]
-        internal GameGui GameGui { get; set; }
+        internal static IGameGui GameGui { get; set; }
 
         [PluginService]
         [AllowNull, NotNull]
-        internal SigScanner SigScanner { get; set; }
+        internal static SigScanner SigScanner { get; set; }
 
         [PluginService]
         [AllowNull, NotNull]
-        internal ChatGui ChatGui { get; set; }
+        internal static IChatGui ChatGui { get; set; }
+
+        [PluginService]
+        [AllowNull, NotNull]
+        internal static IPluginLog PluginLog { get; set; }
+
+        [PluginService]
+        [AllowNull, NotNull]
+        internal static IGameInteropProvider GameInteropProvider { get; set; }
 
         internal Configuration Config { get; }
         internal ChatTwoIntegration ChatTwoIntegration { get; }
@@ -51,21 +60,21 @@ namespace Globetrotter {
         private TreasureMaps Maps { get; }
 
         public GlobetrotterPlugin() {
-            this.Config = this.Interface.GetPluginConfig() as Configuration ?? new Configuration();
-            this.Config.Initialize(this.Interface);
+            this.Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
+            this.Config.Initialize(Interface);
 
             this.Ui = new PluginUi(this);
-            this.Maps = new TreasureMaps(this, this.Interface);
+            this.Maps = new TreasureMaps(this);
             this.XivCommon = new XivCommonBase(Hooks.None);
-            this.ChatTwoIntegration = new ChatTwoIntegration(this.Interface, this.Maps);
+            this.ChatTwoIntegration = new ChatTwoIntegration(this.Maps);
 
-            this.Interface.UiBuilder.Draw += this.Ui.Draw;
-            this.Interface.UiBuilder.OpenConfigUi += this.Ui.OpenSettings;
-            this.GameGui.HoveredItemChanged += this.Maps.OnHover;
-            this.CommandManager.AddHandler("/pglobetrotter", new CommandInfo(this.OnConfigCommand) {
+            Interface.UiBuilder.Draw += this.Ui.Draw;
+            Interface.UiBuilder.OpenConfigUi += this.Ui.OpenSettings;
+            GameGui.HoveredItemChanged += this.Maps.OnHover;
+            CommandManager.AddHandler("/pglobetrotter", new CommandInfo(this.OnConfigCommand) {
                 HelpMessage = "Show the Globetrotter config",
             });
-            this.CommandManager.AddHandler("/tmap", new CommandInfo(this.OnCommand) {
+            CommandManager.AddHandler("/tmap", new CommandInfo(this.OnCommand) {
                 HelpMessage = "Open the map and place a flag at the location of your current treasure map",
             });
         }
@@ -75,14 +84,14 @@ namespace Globetrotter {
         }
 
         private void OnCommand(string command, string args) {
-            //this.Maps.OpenMapLocation();
+            // this.Maps.OpenMapLocation();
             var link = false;
             var echo = false;
             if (!args.IsNullOrEmpty()) { 
                 string[] multiArgs = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                link = multiArgs.Any(x => x.ToLower().Equals("link", StringComparison.InvariantCultureIgnoreCase)
+                link = Array.Exists(multiArgs, x => x.ToLower().Equals("link", StringComparison.InvariantCultureIgnoreCase)
                                                      || x.ToLower().Equals("l", StringComparison.InvariantCultureIgnoreCase));
-                echo = multiArgs.Any(x => x.ToLower().Equals("echo", StringComparison.InvariantCultureIgnoreCase)
+                echo = Array.Exists(multiArgs, x => x.ToLower().Equals("echo", StringComparison.InvariantCultureIgnoreCase)
                                                      || x.ToLower().Equals("e", StringComparison.InvariantCultureIgnoreCase));
             }
             this.Maps.OpenMapLocation(link, echo);
@@ -94,24 +103,16 @@ namespace Globetrotter {
             }
 
             if (disposing) {
-                this.Interface.UiBuilder.Draw -= this.Ui.Draw;
-                this.Interface.UiBuilder.OpenConfigUi -= this.Ui.OpenSettings;
-                this.GameGui.HoveredItemChanged -= this.Maps.OnHover;
+                Interface.UiBuilder.Draw -= this.Ui.Draw;
+                Interface.UiBuilder.OpenConfigUi -= this.Ui.OpenSettings;
+                GameGui.HoveredItemChanged -= this.Maps.OnHover;
                 this.Maps.Dispose();
-                this.CommandManager.RemoveHandler("/pglobetrotter");
-                this.CommandManager.RemoveHandler("/tmap");
+                CommandManager.RemoveHandler("/pglobetrotter");
+                CommandManager.RemoveHandler("/tmap");
                 this.ChatTwoIntegration.Dispose();
             }
 
             this._disposedValue = true;
-        }
-
-        public void PrintChat(XivChatEntry msg) {
-            this.ChatGui.PrintChat(msg);
-        }
-
-        public void PrintChat(string msg) {
-            this.ChatGui.Print(msg);
         }
 
         internal static void CopyToClipboard(string message) => ImGui.SetClipboardText(message);

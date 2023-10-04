@@ -10,7 +10,6 @@ using ImGuiNET;
 
 namespace Globetrotter {
     internal class ChatTwoIntegration : IDisposable {
-        private DalamudPluginInterface PluginInterface { get; }
         private TreasureMaps Maps { get; }
 
         private ICallGateSubscriber<string> Register { get; }
@@ -20,14 +19,13 @@ namespace Globetrotter {
 
         private string? _id;
 
-        internal ChatTwoIntegration(DalamudPluginInterface pluginInterface, TreasureMaps maps) {
-            this.PluginInterface = pluginInterface;
+        internal ChatTwoIntegration(TreasureMaps maps) {
             this.Maps = maps;
 
-            this.Register = this.PluginInterface.GetIpcSubscriber<string>("ChatTwo.Register");
-            this.Unregister = this.PluginInterface.GetIpcSubscriber<string, object?>("ChatTwo.Unregister");
-            this.Invoke = this.PluginInterface.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
-            this.Available = this.PluginInterface.GetIpcSubscriber<object?>("ChatTwo.Available");
+            this.Register = GlobetrotterPlugin.Interface.GetIpcSubscriber<string>("ChatTwo.Register");
+            this.Unregister = GlobetrotterPlugin.Interface.GetIpcSubscriber<string, object?>("ChatTwo.Unregister");
+            this.Invoke = GlobetrotterPlugin.Interface.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
+            this.Available = GlobetrotterPlugin.Interface.GetIpcSubscriber<object?>("ChatTwo.Available");
 
             this.Available.Subscribe(this.DoRegister);
             try {

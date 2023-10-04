@@ -30,7 +30,7 @@ namespace Globetrotter {
 
                 var mapToRow = new Dictionary<uint, uint>();
 
-                foreach (var rank in this.Plugin.DataManager.GetExcelSheet<TreasureHuntRank>()!) {
+                foreach (var rank in GlobetrotterPlugin.DataManager.GetExcelSheet<TreasureHuntRank>()!) {
                     var unopened = rank.ItemName.Value;
                     if (unopened == null) {
                         continue;
@@ -58,7 +58,6 @@ namespace Globetrotter {
         }
 
         private GlobetrotterPlugin Plugin { get; }
-        private DalamudPluginInterface PluginInterface { get; }
         private TreasureMapPacket? _lastMap;
 
         /// <summary>
@@ -81,16 +80,15 @@ namespace Globetrotter {
 
         private List<uint> UsedPayloadIds { get; } = new();
 
-        public TreasureMaps(GlobetrotterPlugin plugin, DalamudPluginInterface pluginInterface) {
+        public TreasureMaps(GlobetrotterPlugin plugin) {
             this.Plugin = plugin;
-            this.PluginInterface = pluginInterface;
 
-            var acsPtr = this.Plugin.SigScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
-            this._acsHook = Hook<HandleActorControlSelfDelegate>.FromAddress(acsPtr, this.OnACS);
+            var acsPtr = GlobetrotterPlugin.SigScanner.ScanText("48 89 5C 24 ?? 48 89 74 24 ?? 57 48 83 EC 30 48 8B D9 49 8B F8 41 0F B7 08");
+            this._acsHook = GlobetrotterPlugin.GameInteropProvider.HookFromAddress<HandleActorControlSelfDelegate>(acsPtr, this.OnACS);
             this._acsHook.Enable();
 
-            var showMapPtr = this.Plugin.SigScanner.ScanText("E8 ?? ?? ?? ?? 40 84 FF 0F 85 ?? ?? ?? ?? 48 8B 0D");
-            this._showMapHook = Hook<ShowTreasureMapDelegate>.FromAddress(showMapPtr, this.OnShowMap);
+            var showMapPtr = GlobetrotterPlugin.SigScanner.ScanText("E8 ?? ?? ?? ?? 40 84 FF 0F 85 ?? ?? ?? ?? 48 8B 0D");
+            this._showMapHook = GlobetrotterPlugin.GameInteropProvider.HookFromAddress<ShowTreasureMapDelegate>(showMapPtr, this.OnShowMap);
             this._showMapHook.Enable();
         }
 
@@ -113,7 +111,7 @@ namespace Globetrotter {
                     return IntPtr.Zero;
                 }
             } catch (Exception ex) {
-                PluginLog.LogError(ex, "Exception on show map");
+                GlobetrotterPlugin.PluginLog.Error(ex, "Exception on show map");
             }
 
             return this._showMapHook.Original(manager, rowId, subRowId, a4);
@@ -141,7 +139,7 @@ namespace Globetrotter {
             try {
                 this.OnACSInner(dataPtr);
             } catch (Exception ex) {
-                PluginLog.LogError(ex, "Exception on ACS");
+                GlobetrotterPlugin.PluginLog.Error(ex, "Exception on ACS");
             }
 
             return this._acsHook.Original(a1, a2, dataPtr);
@@ -170,7 +168,7 @@ namespace Globetrotter {
                 return null;
             }
 
-            var spot = this.Plugin.DataManager.GetExcelSheet<TreasureSpot>()!.GetRow(rowId, packet.SubRowId);
+            var spot = GlobetrotterPlugin.DataManager.GetExcelSheet<TreasureSpot>()!.GetRow(rowId, packet.SubRowId);
 
             var loc = spot?.Location?.Value;
             map = loc?.Map?.Value;
@@ -211,10 +209,10 @@ namespace Globetrotter {
         public DalamudLinkPayload CreatePayload(uint id) {
             if (UsedPayloadIds.Contains(id)) {
                 UsedPayloadIds.RemoveAt(UsedPayloadIds.FindIndex(0, x => x == id));
-                this.PluginInterface.RemoveChatLinkHandler(id);
+                GlobetrotterPlugin.Interface.RemoveChatLinkHandler(id);
             }
             UsedPayloadIds.Add(id);
-            return this.PluginInterface.AddChatLinkHandler(id,
+            return GlobetrotterPlugin.Interface.AddChatLinkHandler(id,
                     (i, m) => GlobetrotterPlugin.CopyToClipboard("My map is at <flag>"));
         }
 
@@ -225,7 +223,7 @@ namespace Globetrotter {
                 return;
             }
 
-            this.Plugin.GameGui.OpenMapWithMapLink(mapLink);
+            GlobetrotterPlugin.GameGui.OpenMapWithMapLink(mapLink);
 
             if (echo) {
                 DalamudLinkPayload payload = CreatePayload(LastMapEventId);
@@ -240,7 +238,7 @@ namespace Globetrotter {
                 seStringBuilder = seStringBuilder.Add(RawPayload.LinkTerminator);
                 seStringBuilder = seStringBuilder.AddUiForegroundOff();
 
-                this.Plugin.PrintChat(new XivChatEntry
+                GlobetrotterPlugin.ChatGui.Print(new XivChatEntry
                 {
                     Message = seStringBuilder.Build(),
                     Type = XivChatType.Debug
@@ -248,7 +246,7 @@ namespace Globetrotter {
                 
             }
             if (link) {
-                this.Plugin.PrintChat(new XivChatEntry
+                GlobetrotterPlugin.ChatGui.Print(new XivChatEntry
                 {
                     Message = "Copied message to clipboard...",
                     Type = XivChatType.Debug
@@ -298,7 +296,7 @@ namespace Globetrotter {
         }
 
         private string ToMapName(uint eventItemId) {
-            var eventItem = this.Plugin.DataManager.GetExcelSheet<EventItem>()!.GetRow(eventItemId);
+            var eventItem = GlobetrotterPlugin.DataManager.GetExcelSheet<EventItem>()!.GetRow(eventItemId);
             return eventItem?.Name.ToDalamudString().TextValue ?? "Unknown";
         }
     }
