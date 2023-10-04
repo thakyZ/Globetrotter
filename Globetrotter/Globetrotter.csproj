@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
     <PropertyGroup>
-        <Version>1.2.9</Version>
+        <Version>1.2.10</Version>
         <TargetFramework>net7-windows</TargetFramework>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
@@ -46,14 +46,6 @@
             <HintPath>$(DalamudLibPath)\ImGui.NET.dll</HintPath>
             <Private>False</Private>
         </Reference>
-        <Reference Include="ImGuiScene">
-            <HintPath>$(DalamudLibPath)\ImGuiScene.dll</HintPath>
-            <Private>False</Private>
-        </Reference>
-        <Reference Include="FFXIVClientStructs">
-            <HintPath>$(DalamudLibPath)\FFXIVClientStructs.dll</HintPath>
-            <Private>False</Private>
-        </Reference>
         <Reference Include="Lumina">
             <HintPath>$(DalamudLibPath)\Lumina.dll</HintPath>
             <Private>False</Private>
@@ -65,21 +57,17 @@
     </ItemGroup>
 
     <ItemGroup Condition=" '$(Configuration)' == 'Release' ">
-        <Content Include=".\$(MSBuildProjectName).yaml">
-            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-        </Content>
+        <Content Include=".\$(MSBuildProjectName).yaml" CopyToOutputDirectory="Never" />
         <None Remove=".\$(MSBuildProjectName)2.yaml" />
     </ItemGroup>
 
     <ItemGroup Condition=" '$(Configuration)' == 'Debug' ">
         <None Remove=".\$(MSBuildProjectName).yaml" />
-        <Content Include=".\$(MSBuildProjectName)2.yaml" Link="$(MSBuildProjectName)2.yaml">
-            <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-        </Content>
+        <Content Include=".\$(MSBuildProjectName)2.yaml" CopyToOutputDirectory="Never" />
     </ItemGroup>
 
     <ItemGroup>
-        <PackageReference Include="DalamudPackager" Version="2.1.11" />
+        <PackageReference Include="DalamudPackager" Version="2.1.12" />
         <PackageReference Include="XivCommon" Version="7.0.2" />
     </ItemGroup>
 

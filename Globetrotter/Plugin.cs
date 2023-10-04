@@ -1,71 +1,54 @@
 ﻿using Dalamud.Game.Command;
 using Dalamud.Plugin;
 using System;
-using Dalamud.Data;
 using Dalamud.Game;
-using Dalamud.Game.Gui;
 using Dalamud.IoC;
-using Dalamud.Game.Text;
-using Dalamud.Utility;
-using XivCommon;
-using System.Linq;
-using System.Globalization;
+using Dalamud.Plugin.Services;
 using System.Diagnostics.CodeAnalysis;
 using ImGuiNET;
-using Dalamud.Plugin.Services;
 
 namespace Globetrotter {
     // ReSharper disable once ClassNeverInstantiated.Global
-    public class GlobetrotterPlugin : IDalamudPlugin {
+    public class Plugin : IDalamudPlugin {
         private bool _disposedValue;
 
-        public string Name => "Globetrotter";
+        [PluginService]
+        internal static IPluginLog Log { get; private set; } = null!;
 
         [PluginService]
         [AllowNull, NotNull]
-        internal static DalamudPluginInterface Interface { get; set; }
+        internal static DalamudPluginInterface Interface { get; private set; }
+
+        [PluginService]
+        private ICommandManager CommandManager { get; init; } = null!;
+
+        [PluginService]
+        internal IDataManager DataManager { get; init; } = null!;
+
+        [PluginService]
+        internal IGameGui GameGui { get; init; } = null!;
 
         [PluginService]
         [AllowNull, NotNull]
-        private static ICommandManager CommandManager { get; set; }
+        internal static IChatGui ChatGui { get; private set; }
 
         [PluginService]
-        [AllowNull, NotNull]
-        internal static IDataManager DataManager { get; set; }
+        internal ISigScanner SigScanner { get; init; } = null!;
 
         [PluginService]
-        [AllowNull, NotNull]
-        internal static IGameGui GameGui { get; set; }
-
-        [PluginService]
-        [AllowNull, NotNull]
-        internal static SigScanner SigScanner { get; set; }
-
-        [PluginService]
-        [AllowNull, NotNull]
-        internal static IChatGui ChatGui { get; set; }
-
-        [PluginService]
-        [AllowNull, NotNull]
-        internal static IPluginLog PluginLog { get; set; }
-
-        [PluginService]
-        [AllowNull, NotNull]
-        internal static IGameInteropProvider GameInteropProvider { get; set; }
+        internal IGameInteropProvider GameInteropProvider { get; init; } = null!;
 
         internal Configuration Config { get; }
         internal ChatTwoIntegration ChatTwoIntegration { get; }
-        internal XivCommonBase XivCommon { get; }
         private PluginUi Ui { get; }
         private TreasureMaps Maps { get; }
 
-        public GlobetrotterPlugin() {
+        public Plugin() {
             this.Config = Interface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Config.Initialize(Interface);
 
             this.Ui = new PluginUi(this);
             this.Maps = new TreasureMaps(this);
-            this.XivCommon = new XivCommonBase(Hooks.None);
             this.ChatTwoIntegration = new ChatTwoIntegration(this.Maps);
 
             Interface.UiBuilder.Draw += this.Ui.Draw;
@@ -87,7 +70,7 @@ namespace Globetrotter {
             // this.Maps.OpenMapLocation();
             var link = false;
             var echo = false;
-            if (!args.IsNullOrEmpty()) { 
+            if (!string.IsNullOrEmpty(args)) {
                 string[] multiArgs = args.Split(' ', StringSplitOptions.RemoveEmptyEntries);
                 link = Array.Exists(multiArgs, x => x.ToLower().Equals("link", StringComparison.InvariantCultureIgnoreCase)
                                                      || x.ToLower().Equals("l", StringComparison.InvariantCultureIgnoreCase));

@@ -22,10 +22,10 @@ namespace Globetrotter {
         internal ChatTwoIntegration(TreasureMaps maps) {
             this.Maps = maps;
 
-            this.Register = GlobetrotterPlugin.Interface.GetIpcSubscriber<string>("ChatTwo.Register");
-            this.Unregister = GlobetrotterPlugin.Interface.GetIpcSubscriber<string, object?>("ChatTwo.Unregister");
-            this.Invoke = GlobetrotterPlugin.Interface.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
-            this.Available = GlobetrotterPlugin.Interface.GetIpcSubscriber<object?>("ChatTwo.Available");
+            this.Register = Plugin.Interface.GetIpcSubscriber<string>("ChatTwo.Register");
+            this.Unregister = Plugin.Interface.GetIpcSubscriber<string, object?>("ChatTwo.Unregister");
+            this.Invoke = Plugin.Interface.GetIpcSubscriber<string, PlayerPayload?, ulong, Payload?, SeString?, SeString?, object?>("ChatTwo.Invoke");
+            this.Available = Plugin.Interface.GetIpcSubscriber<object?>("ChatTwo.Available");
 
             this.Available.Subscribe(this.DoRegister);
             try {
@@ -38,19 +38,29 @@ namespace Globetrotter {
             this.Invoke.Subscribe(this.Integration);
         }
 
-        public void Dispose() {
-            if (this._id != null) {
-                try {
-                    this.Unregister.InvokeAction(this._id);
-                } catch (Exception) {
-                    // no-op
+        private bool _isDisposed;
+
+        protected virtual void Dispose(bool disposing) {
+            if (!_isDisposed && disposing) {
+                if (this._id != null) {
+                    try {
+                        this.Unregister.InvokeAction(this._id);
+                    } catch {
+                        // no-op
+                    }
+
+                    this._id = null;
                 }
 
-                this._id = null;
+                this.Invoke.Unsubscribe(this.Integration);
+                this.Available.Unsubscribe(this.DoRegister);
+                _isDisposed = true;
             }
+        }
 
-            this.Invoke.Unsubscribe(this.Integration);
-            this.Available.Unsubscribe(this.DoRegister);
+        public void Dispose() {
+            Dispose(true);
+            GC.SuppressFinalize(this);
         }
 
         private void DoRegister() {

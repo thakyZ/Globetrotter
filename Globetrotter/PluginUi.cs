@@ -3,7 +3,7 @@ using System.Numerics;
 
 namespace Globetrotter {
     internal class PluginUi {
-        private GlobetrotterPlugin Plugin { get; }
+        private Plugin Plugin { get; }
 
         private bool _displaySettings;
 
@@ -12,7 +12,7 @@ namespace Globetrotter {
             set => this._displaySettings = value;
         }
 
-        public PluginUi(GlobetrotterPlugin plugin) {
+        public PluginUi(Plugin plugin) {
             this.Plugin = plugin;
         }
 
