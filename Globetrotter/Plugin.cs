@@ -13,30 +13,36 @@ namespace Globetrotter {
         private bool _disposedValue;
 
         [PluginService]
-        internal static IPluginLog Log { get; private set; } = null!;
+        [AllowNull, NotNull]
+        internal static IPluginLog Log { get; private set; }
 
         [PluginService]
         [AllowNull, NotNull]
         internal static DalamudPluginInterface Interface { get; private set; }
 
         [PluginService]
-        private ICommandManager CommandManager { get; init; } = null!;
+        [AllowNull, NotNull]
+        private ICommandManager CommandManager { get; set; }
 
         [PluginService]
-        internal IDataManager DataManager { get; init; } = null!;
+        [AllowNull, NotNull]
+        internal IDataManager DataManager { get; set; }
 
         [PluginService]
-        internal IGameGui GameGui { get; init; } = null!;
+        [AllowNull, NotNull]
+        internal IGameGui GameGui { get; set; }
 
         [PluginService]
         [AllowNull, NotNull]
         internal static IChatGui ChatGui { get; private set; }
 
         [PluginService]
-        internal ISigScanner SigScanner { get; init; } = null!;
+        [AllowNull, NotNull]
+        internal ISigScanner SigScanner { get; set; }
 
         [PluginService]
-        internal IGameInteropProvider GameInteropProvider { get; init; } = null!;
+        [AllowNull, NotNull]
+        internal IGameInteropProvider GameInteropProvider { get; set; }
 
         internal Configuration Config { get; }
         internal ChatTwoIntegration ChatTwoIntegration { get; }
